@@ -7,6 +7,7 @@ import com.r3.corda.lib.accounts.workflows.internal.accountService
 import com.r3.corda.lib.accounts.workflows.internal.flows.createKeyForAccount
 import com.template.contracts.UserContract
 import com.template.states.UserState
+import com.template.states.UserStateInput
 import net.corda.core.contracts.StateAndRef
 import net.corda.core.flows.FinalityFlow
 import net.corda.core.flows.FlowLogic
@@ -20,7 +21,7 @@ import net.corda.core.utilities.getOrThrow
 
 @StartableByRPC
 @InitiatingFlow
-class IssueUserWrapperFlow(private val accountInfo: StateAndRef<AccountInfo>, private val userState: UserState) : FlowLogic<StateAndRef<UserState>>() {
+class IssueUserWrapperFlow(private val accountInfo: StateAndRef<AccountInfo>, private val userState: UserStateInput) : FlowLogic<StateAndRef<UserState>>() {
     @Suspendable
     override fun call(): StateAndRef<UserState> {
         return (subFlow(IssueUserFlow(setOf(initiateFlow(accountInfo.state.data.host)), accountInfo, userState)))
@@ -40,7 +41,7 @@ class IssueUserWrapperResponse(private val otherSession: FlowSession) : FlowLogi
 class IssueUserFlow(
         private val sessions: Collection<FlowSession>,
         private val accountInfo: StateAndRef<AccountInfo>,
-        private val user: UserState) : FlowLogic<StateAndRef<UserState>>() {
+        private val user: UserStateInput) : FlowLogic<StateAndRef<UserState>>() {
 
     @Suspendable
     override fun call(): StateAndRef<UserState> {
@@ -51,7 +52,7 @@ class IssueUserFlow(
         }
         val txBuilder = TransactionBuilder(notary = serviceHub.networkMapCache.notaryIdentities.first())
         txBuilder.addCommand(UserContract.CREATE, serviceHub.myInfo.legalIdentities.first().owningKey)
-        txBuilder.addOutputState(UserState(user.user, user.password, keyToUse,null))
+        txBuilder.addOutputState(UserState(user.user, user.password, keyToUse, accountInfo))
         val signedTxLocally = serviceHub.signInitialTransaction(txBuilder)
         val finalizedTx = subFlow(FinalityFlow(signedTxLocally, sessions.filterNot { it.counterparty.name == ourIdentity.name }))
         return finalizedTx.coreTransaction.outRefsOfType(UserState::class.java).single()
@@ -67,7 +68,7 @@ class IssueAccountHandler(val otherSession: FlowSession) : FlowLogic<Unit>() {
 
 
 @StartableByRPC
-class CreateAccountFlow(private val player: UserState) : FlowLogic<StateAndRef<AccountInfo>>() {
+class CreateAccountFlow(private val player: UserStateInput) : FlowLogic<StateAndRef<AccountInfo>>() {
     @Suspendable
     override fun call(): StateAndRef<AccountInfo> {
         val accountService = serviceHub.accountService
