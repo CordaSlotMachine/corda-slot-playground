@@ -52,7 +52,7 @@ class IssueUserFlow(
         }
         val txBuilder = TransactionBuilder(notary = serviceHub.networkMapCache.notaryIdentities.first())
         txBuilder.addCommand(UserContract.CREATE, serviceHub.myInfo.legalIdentities.first().owningKey)
-        txBuilder.addOutputState(UserState(user.user, user.password, keyToUse, accountInfo))
+        txBuilder.addOutputState(UserState(user.name, user.password, keyToUse, accountInfo))
         val signedTxLocally = serviceHub.signInitialTransaction(txBuilder)
         val finalizedTx = subFlow(FinalityFlow(signedTxLocally, sessions.filterNot { it.counterparty.name == ourIdentity.name }))
         return finalizedTx.coreTransaction.outRefsOfType(UserState::class.java).single()
@@ -72,6 +72,6 @@ class CreateAccountFlow(private val player: UserStateInput) : FlowLogic<StateAnd
     @Suspendable
     override fun call(): StateAndRef<AccountInfo> {
         val accountService = serviceHub.accountService
-        return accountService.createAccount(player.user).getOrThrow()
+        return accountService.createAccount(player.name).getOrThrow()
     }
 }

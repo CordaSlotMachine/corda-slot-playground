@@ -9,12 +9,15 @@ import net.corda.core.contracts.StateRef
 import net.corda.core.contracts.UniqueIdentifier
 import net.corda.core.identity.AbstractParty
 import net.corda.core.identity.AnonymousParty
+import net.corda.core.schemas.MappedSchema
+import net.corda.core.schemas.PersistentState
+import net.corda.core.schemas.QueryableState
 import net.corda.core.serialization.CordaSerializable
 import java.security.PublicKey
 
 @BelongsToContract(UserContract::class)
 @CordaSerializable
-data class UserState(val user: String,
+data class UserState(val name: String,
                      val password: String,
                      val owningKey: PublicKey? = null,
                      var account: StateAndRef<AccountInfo>?,
