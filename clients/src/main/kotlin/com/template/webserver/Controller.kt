@@ -1,5 +1,11 @@
 package com.template.webserver
 
+import com.template.flows.CreateAccountFlow
+import com.template.flows.IssueUserFlow
+import com.template.flows.IssueUserWrapperFlow
+import com.template.states.UserState
+import net.corda.core.messaging.startFlow
+import net.corda.core.utilities.getOrThrow
 import org.slf4j.LoggerFactory
 import org.springframework.web.bind.annotation.GetMapping
 import org.springframework.web.bind.annotation.PostMapping
@@ -19,15 +25,12 @@ class Controller(rpc: NodeRPCConnection) {
 
     private val proxy = rpc.proxy
 
-    @GetMapping(value = ["/templateendpoint"], produces = ["text/plain"])
-    private fun templateendpoint(): String {
-        return "Define an endpoint here."
-    }
-
     //User endpoints
     @PostMapping(value = ["/user/create"], produces = ["text/plain"])
-    private fun createUser(): String {
-        return "Define an endpoint here."
+    private fun createUser(user: UserState): String {
+        val newAccount = proxy.startFlow(::CreateAccountFlow, user).returnValue.getOrThrow()
+        val res = proxy.startFlow(::IssueUserWrapperFlow, newAccount, user).returnValue.getOrThrow()
+        return "OK"
     }
 
     @PostMapping(value = ["/user/login"], produces = ["text/plain"])
