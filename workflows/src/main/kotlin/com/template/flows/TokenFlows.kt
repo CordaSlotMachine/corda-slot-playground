@@ -20,7 +20,7 @@ class MoveTokenFlow(private val origin: AccountInfo, private val destination: Ac
         val originParty = subFlow(RequestKeyForAccount(origin))
         val destinationParty = subFlow(RequestKeyForAccount(destination))
         val session = initiateFlow(origin.host)
-        val signedTx = subFlow(MoveFungibleTokensFlow(partyAndAmount = PartyAndAmount(originParty, amount.EUR), participantSessions = listOf(session), changeHolder = destinationParty))
-        return subFlow(FinalityFlow(signedTx, session))
+        val signedTx = subFlow(MoveFungibleTokensFlow(partyAndAmount = PartyAndAmount(destinationParty, amount.EUR), participantSessions = listOf(session), changeHolder = originParty))
+        return subFlow(FinalityFlow(signedTx))
     }
 }
