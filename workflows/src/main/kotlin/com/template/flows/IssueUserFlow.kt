@@ -5,6 +5,11 @@ import com.r3.corda.lib.accounts.contracts.states.AccountInfo
 import com.r3.corda.lib.accounts.workflows.flows.RequestKeyForAccount
 import com.r3.corda.lib.accounts.workflows.internal.accountService
 import com.r3.corda.lib.accounts.workflows.internal.flows.createKeyForAccount
+import com.r3.corda.lib.tokens.contracts.utilities.heldBy
+import com.r3.corda.lib.tokens.contracts.utilities.issuedBy
+import com.r3.corda.lib.tokens.contracts.utilities.of
+import com.r3.corda.lib.tokens.money.EUR
+import com.r3.corda.lib.tokens.workflows.flows.rpc.IssueTokens
 import com.template.contracts.UserContract
 import com.template.states.UserState
 import com.template.states.UserStateInput
@@ -45,14 +50,16 @@ class IssueUserFlow(
 
     @Suspendable
     override fun call(): StateAndRef<UserState> {
-        val keyToUse = if (accountInfo.state.data.host == ourIdentity) {
-            serviceHub.createKeyForAccount(accountInfo.state.data).owningKey
+        val party = if (accountInfo.state.data.host == ourIdentity) {
+            serviceHub.createKeyForAccount(accountInfo.state.data)
         } else {
-            subFlow(RequestKeyForAccount(accountInfo.state.data)).owningKey
+            subFlow(RequestKeyForAccount(accountInfo.state.data))
         }
+        val tokens = listOf(10 of EUR issuedBy ourIdentity heldBy party)
+        subFlow(IssueTokens(tokens))
         val txBuilder = TransactionBuilder(notary = serviceHub.networkMapCache.notaryIdentities.first())
         txBuilder.addCommand(UserContract.CREATE, serviceHub.myInfo.legalIdentities.first().owningKey)
-        txBuilder.addOutputState(UserState(user.name, user.password, keyToUse, accountInfo))
+        txBuilder.addOutputState(UserState(user.name, user.password, party.owningKey, accountInfo))
         val signedTxLocally = serviceHub.signInitialTransaction(txBuilder)
         val finalizedTx = subFlow(FinalityFlow(signedTxLocally, sessions.filterNot { it.counterparty.name == ourIdentity.name }))
         return finalizedTx.coreTransaction.outRefsOfType(UserState::class.java).single()
