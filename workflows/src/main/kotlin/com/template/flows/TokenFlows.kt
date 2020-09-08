@@ -12,8 +12,6 @@ import net.corda.core.flows.InitiatingFlow
 import net.corda.core.flows.StartableByRPC
 import net.corda.core.transactions.SignedTransaction
 
-@StartableByRPC
-@InitiatingFlow
 class MoveTokenFlow(private val origin: AccountInfo, private val destination: AccountInfo, val amount: Long) : FlowLogic<SignedTransaction>() {
     @Suspendable
     override fun call(): SignedTransaction {
