@@ -2,6 +2,8 @@ package com.template.webserver
 
 import com.template.flows.CreateAccountFlow
 import com.template.flows.IssueUserWrapperFlow
+import com.template.inputs.GameInput
+import com.template.output.GameOutput
 import com.template.states.UserState
 import com.template.states.UserStateInput
 import net.corda.core.contracts.UniqueIdentifier
@@ -61,8 +63,8 @@ class Controller(rpc: NodeRPCConnection) {
         return "Define an endpoint here."
     }
 
-    @PostMapping(value = ["/game/spin"], produces = ["text/plain"])
-    private fun spinGame(): String {
-        return "Define an endpoint here."
+    @PostMapping(value = ["/game/spin"], produces = ["application/json"], consumes = ["application/json"])
+    private fun spinGame(@RequestBody gameInput: GameInput): GameOutput {
+        return GameOutput(listOf(1,2,3), 10, true, 100,100,100)
     }
 }
