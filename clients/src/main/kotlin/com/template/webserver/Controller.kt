@@ -34,8 +34,10 @@ class Controller(rpc: NodeRPCConnection) {
     //User endpoints
     @PostMapping(value = ["/user/create"], produces = ["application/json"], consumes = ["application/json"])
     private fun createUser(@RequestBody user: UserStateInput): String {
-        val newAccount = proxy.startFlow(::CreateAccountFlow, user).returnValue.getOrThrow()
-        val userState = proxy.startFlow(::IssueUserWrapperFlow, newAccount, user).returnValue.getOrThrow()
+        val newAccount = proxy.startFlow(::CreateAccountFlow, user.name).returnValue.getOrThrow()
+        val newReserveAccount = proxy.startFlow(::CreateAccountFlow, user.name+"-RESERVE").returnValue.getOrThrow()
+
+        val userState = proxy.startFlow(::IssueUserWrapperFlow, user, newAccount, newReserveAccount).returnValue.getOrThrow()
         return userState.state.data.linearId.toString()
     }
 
