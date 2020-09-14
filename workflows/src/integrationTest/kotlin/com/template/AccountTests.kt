@@ -3,7 +3,7 @@ package com.template
 import net.corda.testing.node.TestCordapp
 
 import com.r3.corda.lib.accounts.workflows.internal.accountService
-import com.template.flows.IssueUserWrapperFlow
+import com.template.flows.IssueUserFlow
 import com.template.states.UserState
 import com.template.states.UserStateInput
 import net.corda.core.identity.Party
@@ -71,17 +71,15 @@ class AccountTests {
     @Test
     fun `issue an account`() {
         val aliceService = aliceNode.services.accountService
-        val aliceAccount = aliceService.createAccount("TEST_ACCOUNT").getOrThrow()
-        val aliceReserveAccount = aliceService.createAccount("TEST_ACCOUNT_RESERVE").getOrThrow()
 
         val user1 = UserStateInput("user1", "password", null)
-        val userState = aliceNode.startFlow(IssueUserWrapperFlow(user1, aliceAccount, aliceReserveAccount)).getOrThrow()
+        val userState = aliceNode.startFlow(IssueUserFlow(user1)).getOrThrow()
 
         Assert.assertThat(userState.state.data, `is`(notNullValue(UserState::class.java)))
 
         aliceNode.transaction {
-            val owningAccount = aliceService.accountInfo(userState.state.data.owningKey!!)
-            Assert.assertThat(owningAccount!!.state.data.identifier, `is`(IsEqual.equalTo(aliceAccount.state.data.identifier)))
+            val owningAccount = aliceService.accountInfo(userState.state.data.userParty.owningKey)
+            Assert.assertThat(owningAccount!!.state.data.name, `is`(IsEqual.equalTo(user1.name)))
         }
     }
 

@@ -15,5 +15,6 @@ data class GameConfigState(val gameCombinations: Array<GameCombination>,
                            override val linearId: UniqueIdentifier = UniqueIdentifier()
 ) :LinearState {}
 
+@CordaSerializable
 data class GameCombination(val rheel1:String, val rheel2:String, val rheel3:String, val payout:Long){
 }

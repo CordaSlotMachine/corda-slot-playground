@@ -20,3 +20,7 @@ fun main(args: Array<String>) {
     app.webApplicationType = SERVLET
     app.run(*args)
 }
+
+fun initNodeData(){
+
+}

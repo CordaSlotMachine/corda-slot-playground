@@ -13,16 +13,21 @@ import com.template.utils.CASINO_ACCOUNT
 import com.template.utils.CASINO_RESERVE_ACCOUNT
 import net.corda.core.node.AppServiceHub
 import net.corda.core.node.services.CordaService
+import net.corda.core.serialization.SingletonSerializeAsToken
+import net.corda.core.utilities.loggerFor
 
 @CordaService
-class InitService(serviceHub: AppServiceHub){
+class InitService(serviceHub: AppServiceHub): SingletonSerializeAsToken(){
+
+    private companion object {
+        val log = loggerFor<InitService>()
+    }
 
     init {
-        serviceHub.accountService.createAccount(CASINO_ACCOUNT)
-        serviceHub.accountService.createAccount(CASINO_RESERVE_ACCOUNT)
-        serviceHub.ourIdentity
-        val tokens = listOf(999999999999 of EUR issuedBy serviceHub.ourIdentity heldBy serviceHub.ourIdentity.toParty(serviceHub))
-        serviceHub.startFlow(IssueTokens(tokens))
-        serviceHub.startFlow(IssueGameConfigFlow())
+//        serviceHub.accountService.createAccount(CASINO_ACCOUNT)
+//        serviceHub.accountService.createAccount(CASINO_RESERVE_ACCOUNT)
+//        val tokens = listOf(999999999999 of EUR issuedBy serviceHub.ourIdentity heldBy serviceHub.ourIdentity.toParty(serviceHub))
+//        serviceHub.startFlow(IssueTokens(tokens))
+//        serviceHub.startFlow(IssueGameConfigFlow())
     }
 }

@@ -1,5 +1,6 @@
 package com.template.webserver
 
+import com.template.flows.GenerateResultForGameFlow
 import com.template.flows.IssueUserFlow
 import com.template.flows.ReserveTokensForGameFlow
 import com.template.flows.StartGameFlow
@@ -70,8 +71,8 @@ class Controller(rpc: NodeRPCConnection) {
                 QueryCriteria.LinearStateQueryCriteria(linearId = listOf(UniqueIdentifier.fromString(gameInput.user))
                 ))
         val gameState = proxy.startFlow(::StartGameFlow, userState.states.single().state.data, gameInput.amout).returnValue.getOrThrow()
-        proxy.startFlow(::ReserveTokensForGameFlow, gameState.linearId).returnValue.getOrThrow()
-
-        return GameOutput(listOf(1,2,3), 10, true, 100,100,100)
+        val res = proxy.startFlow(::ReserveTokensForGameFlow, gameState.linearId).returnValue.getOrThrow()
+        val updatedGame = proxy.startFlow(::GenerateResultForGameFlow, gameState.linearId).returnValue.getOrThrow()
+        return GameOutput(updatedGame.result!!.toList(), updatedGame.winningAmount, true, 100,100,100)
     }
 }

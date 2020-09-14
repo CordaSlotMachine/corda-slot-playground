@@ -67,9 +67,8 @@ class IssueGameConfigResponderFlow(private val counterPartySession: FlowSession)
 class StartGameFlow(private val user: UserState, private val stake: Long) : FlowLogic<GameState>() {
     @Suspendable
     override fun call(): GameState {
-        val party = subFlow(RequestKeyForAccount(user.account!!.state.data))
         val txBuilder = TransactionBuilder(notary = serviceHub.networkMapCache.notaryIdentities.first())
-        val game = GameState(user = user, stake = stake, participants = listOf(party), result = null, success = null)
+        val game = GameState(user = user, stake = stake, participants = serviceHub.getAllParticipants(), result = null, success = null)
         txBuilder.addCommand(GameContract.CREATE, serviceHub.myInfo.legalIdentities.first().owningKey)
         txBuilder.addOutputState(game)
         txBuilder.verify(serviceHub)
@@ -90,9 +89,9 @@ class StartGameResponderFlow(private val counterPartySession: FlowSession) : Flo
 
 @StartableByRPC
 @InitiatingFlow
-class ReserveTokensForGameFlow(private val gameId: UniqueIdentifier) : FlowLogic<Unit>() {
+class ReserveTokensForGameFlow(private val gameId: UniqueIdentifier) : FlowLogic<Boolean>() {
     @Suspendable
-    override fun call() {
+    override fun call(): Boolean {
         val txBuilder = TransactionBuilder(notary = serviceHub.networkMapCache.notaryIdentities.first())
         val gameConfig = serviceHub.vaultService.queryBy(GameConfigState::class.java)
         val game = serviceHub.vaultService.queryBy<GameState>(QueryCriteria.LinearStateQueryCriteria(linearId = listOf(gameId))).states.single()
@@ -107,6 +106,7 @@ class ReserveTokensForGameFlow(private val gameId: UniqueIdentifier) : FlowLogic
         val signedTx = serviceHub.signInitialTransaction(txBuilder)
         val allOtherParticipants = serviceHub.getAllParticipants().minus(serviceHub.myInfo.legalIdentities.first())
         subFlow(FinalityFlow(signedTx, allOtherParticipants.map { initiateFlow(it) }))
+        return true
     }
 }
 
@@ -120,9 +120,9 @@ class ReserveTokensForGameResponderFlow(private val counterPartySession: FlowSes
 
 @StartableByRPC
 @InitiatingFlow
-class GenerateResultForGameFlow(private val gameId: UniqueIdentifier) : FlowLogic<Unit>() {
+class GenerateResultForGameFlow(private val gameId: UniqueIdentifier) : FlowLogic<GameState>() {
     @Suspendable
-    override fun call() {
+    override fun call(): GameState {
         val txBuilder = TransactionBuilder(notary = serviceHub.networkMapCache.notaryIdentities.first())
         val gameConfig = serviceHub.vaultService.queryBy(GameConfigState::class.java).states.single().state.data
         val game = serviceHub.vaultService.queryBy<GameState>(QueryCriteria.LinearStateQueryCriteria(linearId = listOf(gameId))).states.single()
@@ -141,17 +141,24 @@ class GenerateResultForGameFlow(private val gameId: UniqueIdentifier) : FlowLogi
                     payout = it.payout
                 }
         }
-
-        txBuilder.addOutputState(game.state.data.copy(
+        val updatedGame = game.state.data.copy(
                 step = GameStep.FINISHED,
                 result = result,
                 winningAmount = game.state.data.stake*payout,
-                success = successful))
+                success = successful)
+        txBuilder.addOutputState(updatedGame)
+
+        val casinoAccount = serviceHub.accountService.accountInfo(CASINO_ACCOUNT).single()
+        val casinoReserveAccount = serviceHub.accountService.accountInfo(CASINO_RESERVE_ACCOUNT).single()
+
+        subFlow(MoveTokenFlow(game.state.data.user.reserveAccount!!.state.data, game.state.data.user.account!!.state.data, game.state.data.stake))
+        subFlow(MoveTokenFlow(casinoAccount.state.data, casinoReserveAccount.state.data, game.state.data.stake*payout))
 
         txBuilder.verify(serviceHub)
         val signedTx = serviceHub.signInitialTransaction(txBuilder)
         val allOtherParticipants = serviceHub.getAllParticipants().minus(serviceHub.myInfo.legalIdentities.first())
         subFlow(FinalityFlow(signedTx, allOtherParticipants.map { initiateFlow(it) }))
+        return updatedGame
     }
 }
 
