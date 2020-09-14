@@ -1,14 +1,26 @@
 package com.template
 
 import com.r3.corda.lib.accounts.workflows.internal.accountService
+import com.r3.corda.lib.accounts.workflows.ourIdentity
 import com.r3.corda.lib.tokens.contracts.states.FungibleToken
 import com.r3.corda.lib.tokens.contracts.states.NonFungibleToken
+import com.r3.corda.lib.tokens.contracts.utilities.heldBy
+import com.r3.corda.lib.tokens.contracts.utilities.issuedBy
+import com.r3.corda.lib.tokens.contracts.utilities.of
+import com.r3.corda.lib.tokens.money.EUR
+import com.r3.corda.lib.tokens.workflows.flows.rpc.IssueTokens
+import com.r3.corda.lib.tokens.workflows.utilities.toParty
+import com.template.flows.GenerateResultForGameFlow
+import com.template.flows.IssueGameConfigFlow
 import com.template.flows.IssueUserFlow
 import com.template.flows.MoveTokenFlow
+import com.template.flows.ReserveTokensForGameFlow
+import com.template.flows.StartGameFlow
 import com.template.states.UserState
 import com.template.states.UserStateInput
 import net.corda.core.contracts.StateAndRef
 import net.corda.core.identity.Party
+import net.corda.core.messaging.startFlow
 import net.corda.core.node.services.vault.QueryCriteria.VaultQueryCriteria
 import net.corda.core.utilities.getOrThrow
 import net.corda.testing.common.internal.testNetworkParameters
@@ -29,7 +41,7 @@ import java.util.*
 import kotlin.test.assertEquals
 
 
-class TokenTests {
+class GameTests {
 
     private lateinit var mockNet: MockNetwork
     private lateinit var aliceNode: StartedMockNode
@@ -77,9 +89,13 @@ class TokenTests {
 
 
     @Test
-    fun `move tokens`() {
+    fun `game test`() {
         val aliceService = aliceNode.services.accountService
-        val casinoAccount = aliceService.createAccount("TEST_ACCOUNT2").getOrThrow()
+        val casinoAccount = aliceService.createAccount("CASINO_ACCOUNT").getOrThrow()
+        val casinoReserveAccount = aliceService.createAccount("CASINO_RESERVE_ACCOUNT").getOrThrow()
+
+        val tokens = listOf(999999999999 of EUR issuedBy aliceNode.services.ourIdentity heldBy aliceNode.services.ourIdentity.toParty(aliceNode.services))
+        aliceNode.startFlow(IssueTokens(tokens))
 
         val user1 = UserStateInput("user1", "password", null)
         val userState = aliceNode.startFlow(IssueUserFlow(user1)).getOrThrow()
@@ -91,16 +107,13 @@ class TokenTests {
             Assert.assertThat(owningAccount!!.state.data.name, `is`(IsEqual.equalTo(user1.name)))
         }
 
-        aliceNode.startFlow(MoveTokenFlow(userState.state.data.account!!.state.data, casinoAccount.state.data, 6))
+        aliceNode.startFlow(IssueGameConfigFlow())
         Thread.sleep(2000)
 
-        val aliceAmount: List<StateAndRef<FungibleToken>> = aliceNode.services.vaultService.queryBy(FungibleToken::class.java, VaultQueryCriteria()
-                .withExternalIds(listOf(userState.state.data.account!!.state.data.identifier.id))).states
-        val casinoAmount: List<StateAndRef<FungibleToken>> = aliceNode.services.vaultService.queryBy(FungibleToken::class.java, VaultQueryCriteria()
-                .withExternalIds(listOf(casinoAccount.state.data.identifier.id))).states
-
-        assertEquals(600L,casinoAmount.first().state.data.amount.quantity)
-        assertEquals(400L,aliceAmount.first().state.data.amount.quantity)
+        val gameState = aliceNode.startFlow(StartGameFlow(userState.state.data,1)).getOrThrow()
+        val res = aliceNode.startFlow(ReserveTokensForGameFlow(gameState.linearId)).getOrThrow()
+        val updatedGame = aliceNode.startFlow(GenerateResultForGameFlow(gameState.linearId)).getOrThrow()
+        Thread.sleep(2000)
 
 
     }

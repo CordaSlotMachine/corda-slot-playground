@@ -32,10 +32,7 @@ private class Client {
         println("\n-- Here is the networkMap snapshot --")
         logger.info("{}", nodes)
 
-        // Example #2, here we print the PartyA's node info
-        val me = proxy.nodeInfo().legalIdentities.first().name
-        println("\n-- Here is the node info of the node that the client connected to --")
-        logger.info("{}", me)
+
 
         //Close the client connection
         clientConnection.close()
