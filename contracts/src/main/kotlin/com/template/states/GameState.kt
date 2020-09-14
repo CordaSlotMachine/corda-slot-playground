@@ -1,9 +1,11 @@
 package com.template.states
 
 import com.r3.corda.lib.accounts.contracts.states.AccountInfo
+import com.template.contracts.GameCommands
 import com.template.contracts.GameContract
 import com.template.contracts.UserContract
 import net.corda.core.contracts.BelongsToContract
+import net.corda.core.contracts.CommandData
 import net.corda.core.contracts.LinearState
 import net.corda.core.contracts.StateAndRef
 import net.corda.core.contracts.UniqueIdentifier
@@ -16,6 +18,14 @@ import java.security.PublicKey
 @CordaSerializable
 data class GameState(val user: UserState,
                      val stake: Long,
+                     val success: Boolean?,
+                     val result: Array<Int>?,
+                     val step: GameStep = GameStep.CREATED,
                      override val linearId: UniqueIdentifier = UniqueIdentifier(),
                      override val participants: List<AbstractParty>) : LinearState {
+}
+
+@CordaSerializable
+enum class GameStep {
+    CREATED, RESERVED, FINISHED
 }

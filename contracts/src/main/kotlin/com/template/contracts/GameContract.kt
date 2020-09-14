@@ -7,6 +7,9 @@ import net.corda.core.transactions.LedgerTransaction
 class GameContract : Contract {
     companion object {
         val CREATE: GameCommands = GameCommands("CREATE")
+        val CONFIG: GameCommands = GameCommands("CONFIG")
+        val RESERVE: GameCommands = GameCommands("RESERVE")
+
     }
     override fun verify(tx: LedgerTransaction) {
         return
