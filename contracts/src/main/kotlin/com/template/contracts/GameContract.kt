@@ -9,7 +9,7 @@ class GameContract : Contract {
         val CREATE: GameCommands = GameCommands("CREATE")
         val CONFIG: GameCommands = GameCommands("CONFIG")
         val RESERVE: GameCommands = GameCommands("RESERVE")
-
+        val RESULT: GameCommands = GameCommands("RESULT")
     }
     override fun verify(tx: LedgerTransaction) {
         return
