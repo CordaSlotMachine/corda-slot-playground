@@ -132,9 +132,9 @@ class GenerateResultForGameFlow(private val gameId: UniqueIdentifier) : FlowLogi
         var successful = false
         var payout = 0L
         gameConfig.gameCombinations.forEach {
-                var rheel1Found = checkRheel(it.rheel1, result)
-                var rheel2Found = checkRheel(it.rheel2, result)
-                var rheel3Found = checkRheel(it.rheel3, result)
+                var rheel1Found = checkRheel(it.rheel1, result[0])
+                var rheel2Found = checkRheel(it.rheel2, result[1])
+                var rheel3Found = checkRheel(it.rheel3, result[2])
 
                 if(rheel1Found && rheel2Found && rheel3Found){
                     successful = true
@@ -151,8 +151,15 @@ class GenerateResultForGameFlow(private val gameId: UniqueIdentifier) : FlowLogi
         val casinoAccount = serviceHub.accountService.accountInfo(CASINO_ACCOUNT).single()
         val casinoReserveAccount = serviceHub.accountService.accountInfo(CASINO_RESERVE_ACCOUNT).single()
 
-        subFlow(MoveTokenFlow(game.state.data.user.reserveAccount!!.state.data, game.state.data.user.account!!.state.data, game.state.data.stake))
-        subFlow(MoveTokenFlow(casinoAccount.state.data, casinoReserveAccount.state.data, game.state.data.stake*payout))
+        if(successful){
+            subFlow(MoveTokenFlow(game.state.data.user.reserveAccount!!.state.data, game.state.data.user.account!!.state.data, game.state.data.stake))
+            subFlow(MoveTokenFlow(casinoAccount.state.data, casinoReserveAccount.state.data, game.state.data.stake*payout))
+            val diff = game.state.data.stake*gameConfig.maxMultiplier - game.state.data.stake*payout
+            subFlow(MoveTokenFlow(casinoReserveAccount.state.data, casinoAccount.state.data, diff))
+        } else {
+            subFlow(MoveTokenFlow(game.state.data.user.reserveAccount!!.state.data, casinoAccount.state.data, game.state.data.stake))
+            subFlow(MoveTokenFlow(casinoReserveAccount.state.data, casinoAccount.state.data, game.state.data.stake*gameConfig.maxMultiplier+game.state.data.stake))
+        }
 
         txBuilder.verify(serviceHub)
         val signedTx = serviceHub.signInitialTransaction(txBuilder)
