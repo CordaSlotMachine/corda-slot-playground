@@ -1,9 +1,11 @@
 package com.template.webserver
 
-import com.template.flows.CreateAccountFlow
-import com.template.flows.IssueUserWrapperFlow
+import com.template.flows.IssueUserFlow
+import com.template.flows.ReserveTokensForGameFlow
+import com.template.flows.StartGameFlow
 import com.template.inputs.GameInput
 import com.template.output.GameOutput
+import com.template.states.GameState
 import com.template.states.UserState
 import com.template.states.UserStateInput
 import net.corda.core.contracts.UniqueIdentifier
@@ -34,10 +36,7 @@ class Controller(rpc: NodeRPCConnection) {
     //User endpoints
     @PostMapping(value = ["/user/create"], produces = ["application/json"], consumes = ["application/json"])
     private fun createUser(@RequestBody user: UserStateInput): String {
-        val newAccount = proxy.startFlow(::CreateAccountFlow, user.name).returnValue.getOrThrow()
-        val newReserveAccount = proxy.startFlow(::CreateAccountFlow, user.name+"-RESERVE").returnValue.getOrThrow()
-
-        val userState = proxy.startFlow(::IssueUserWrapperFlow, user, newAccount, newReserveAccount).returnValue.getOrThrow()
+        val userState = proxy.startFlow(::IssueUserFlow, user).returnValue.getOrThrow()
         return userState.state.data.linearId.toString()
     }
 
@@ -67,6 +66,12 @@ class Controller(rpc: NodeRPCConnection) {
 
     @PostMapping(value = ["/game/spin"], produces = ["application/json"], consumes = ["application/json"])
     private fun spinGame(@RequestBody gameInput: GameInput): GameOutput {
+        val userState = proxy.vaultQueryBy<UserState>(
+                QueryCriteria.LinearStateQueryCriteria(linearId = listOf(UniqueIdentifier.fromString(gameInput.user))
+                ))
+        val gameState = proxy.startFlow(::StartGameFlow, userState.states.single().state.data, gameInput.amout).returnValue.getOrThrow()
+        proxy.startFlow(::ReserveTokensForGameFlow, gameState.linearId).returnValue.getOrThrow()
+
         return GameOutput(listOf(1,2,3), 10, true, 100,100,100)
     }
 }

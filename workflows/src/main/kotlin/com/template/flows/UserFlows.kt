@@ -13,6 +13,7 @@ import com.r3.corda.lib.tokens.workflows.flows.rpc.IssueTokens
 import com.template.contracts.UserContract
 import com.template.states.UserState
 import com.template.states.UserStateInput
+import com.template.utils.getAllParticipants
 import net.corda.core.contracts.StateAndRef
 import net.corda.core.flows.FinalityFlow
 import net.corda.core.flows.FlowLogic
@@ -26,61 +27,37 @@ import net.corda.core.utilities.getOrThrow
 
 @StartableByRPC
 @InitiatingFlow
-class IssueUserWrapperFlow(private val userState: UserStateInput, private val accountInfo: StateAndRef<AccountInfo>, private val reserveAccountInfo: StateAndRef<AccountInfo> ) : FlowLogic<StateAndRef<UserState>>() {
-    @Suspendable
-    override fun call(): StateAndRef<UserState> {
-        return (subFlow(IssueUserFlow(setOf(initiateFlow(accountInfo.state.data.host)), userState, accountInfo, reserveAccountInfo )))
-    }
-}
-
-@InitiatedBy(IssueUserWrapperFlow::class)
-class IssueUserWrapperResponse(private val otherSession: FlowSession) : FlowLogic<Unit>() {
-    @Suspendable
-    override fun call() {
-        subFlow(ReceiveFinalityFlow(otherSession))
-    }
-}
-
-@StartableByRPC
-@InitiatingFlow
-class IssueUserFlow(
-        private val sessions: Collection<FlowSession>,
-        private val user: UserStateInput,
-        private val accountInfo: StateAndRef<AccountInfo>,
-        private val reserveAccountInfo: StateAndRef<AccountInfo>
-        ) : FlowLogic<StateAndRef<UserState>>() {
+class IssueUserFlow(private val user: UserStateInput) : FlowLogic<StateAndRef<UserState>>() {
 
     @Suspendable
     override fun call(): StateAndRef<UserState> {
-        val party = if (accountInfo.state.data.host == ourIdentity) {
-            serviceHub.createKeyForAccount(accountInfo.state.data)
-        } else {
-            subFlow(RequestKeyForAccount(accountInfo.state.data))
-        }
-        val tokens = listOf(10 of EUR issuedBy ourIdentity heldBy party)
-        subFlow(IssueTokens(tokens))
-        val txBuilder = TransactionBuilder(notary = serviceHub.networkMapCache.notaryIdentities.first())
-        txBuilder.addCommand(UserContract.CREATE, serviceHub.myInfo.legalIdentities.first().owningKey)
-        txBuilder.addOutputState(UserState(user.name, user.password, party.owningKey, accountInfo, reserveAccountInfo))
-        val signedTxLocally = serviceHub.signInitialTransaction(txBuilder)
-        val finalizedTx = subFlow(FinalityFlow(signedTxLocally, sessions.filterNot { it.counterparty.name == ourIdentity.name }))
-        return finalizedTx.coreTransaction.outRefsOfType(UserState::class.java).single()
+            val accountService = serviceHub.accountService
+            val userAccount = accountService.createAccount(user.name).getOrThrow()
+            val userReserveAccount = accountService.createAccount(user.name+"-RESERVE").getOrThrow()
+
+            val party = if (userAccount.state.data.host == ourIdentity) {
+                serviceHub.createKeyForAccount(userAccount.state.data)
+            } else {
+                subFlow(RequestKeyForAccount(userAccount.state.data))
+            }
+            val tokens = listOf(10 of EUR issuedBy ourIdentity heldBy party)
+            subFlow(IssueTokens(tokens))
+            val txBuilder = TransactionBuilder(notary = serviceHub.networkMapCache.notaryIdentities.first())
+            txBuilder.addCommand(UserContract.CREATE, serviceHub.myInfo.legalIdentities.first().owningKey)
+            txBuilder.addOutputState(UserState(user.name, user.password, userAccount, userReserveAccount, party, participants = serviceHub.getAllParticipants()))
+            txBuilder.verify(serviceHub)
+            val signedTx = serviceHub.signInitialTransaction(txBuilder)
+            val allOtherParticipants = serviceHub.getAllParticipants().minus(serviceHub.myInfo.legalIdentities.first())
+            val finalizedTx = subFlow(FinalityFlow(signedTx, allOtherParticipants.map { initiateFlow(it) }))
+            return finalizedTx.coreTransaction.outRefsOfType(UserState::class.java).single()
     }
 }
 
-class IssueAccountHandler(val otherSession: FlowSession) : FlowLogic<Unit>() {
+
+@InitiatedBy(IssueUserFlow::class)
+class IssueUserResponderFlow(val counterPartySession: FlowSession) : FlowLogic<Unit>() {
     @Suspendable
     override fun call() {
-        subFlow(ReceiveFinalityFlow(otherSession))
-    }
-}
-
-
-@StartableByRPC
-class CreateAccountFlow(private val name: String) : FlowLogic<StateAndRef<AccountInfo>>() {
-    @Suspendable
-    override fun call(): StateAndRef<AccountInfo> {
-        val accountService = serviceHub.accountService
-        return accountService.createAccount(name).getOrThrow()
+        subFlow(ReceiveFinalityFlow(counterPartySession))
     }
 }

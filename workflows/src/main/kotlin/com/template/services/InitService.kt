@@ -8,21 +8,21 @@ import com.r3.corda.lib.tokens.contracts.utilities.of
 import com.r3.corda.lib.tokens.money.EUR
 import com.r3.corda.lib.tokens.workflows.flows.rpc.IssueTokens
 import com.r3.corda.lib.tokens.workflows.utilities.toParty
+import com.template.flows.IssueGameConfigFlow
+import com.template.utils.CASINO_ACCOUNT
+import com.template.utils.CASINO_RESERVE_ACCOUNT
 import net.corda.core.node.AppServiceHub
 import net.corda.core.node.services.CordaService
 
 @CordaService
 class InitService(serviceHub: AppServiceHub){
-    companion object{
-        val CASINO_ACCOUNT = "CASINO_ACCOUNT"
-        val CASINO_RESERVE_ACCOUNT = "CASINO_ACCOUNT"
 
-    }
     init {
         serviceHub.accountService.createAccount(CASINO_ACCOUNT)
         serviceHub.accountService.createAccount(CASINO_RESERVE_ACCOUNT)
         serviceHub.ourIdentity
         val tokens = listOf(999999999999 of EUR issuedBy serviceHub.ourIdentity heldBy serviceHub.ourIdentity.toParty(serviceHub))
         serviceHub.startFlow(IssueTokens(tokens))
+        serviceHub.startFlow(IssueGameConfigFlow())
     }
 }
