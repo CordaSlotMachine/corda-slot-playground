@@ -12,7 +12,7 @@ import net.corda.core.contracts.UniqueIdentifier
 import net.corda.core.identity.AbstractParty
 import net.corda.core.identity.AnonymousParty
 import net.corda.core.serialization.CordaSerializable
-import java.security.PublicKey
+import java.util.*
 
 @BelongsToContract(UserContract::class)
 @CordaSerializable
@@ -21,6 +21,8 @@ data class GameState(val user: UserState,
                      val success: Boolean?,
                      val result: Array<Int>?,
                      val step: GameStep = GameStep.CREATED,
+                     val timestamp: Long = System.currentTimeMillis(),
+                     val winningAmount: Long = 0,
                      override val linearId: UniqueIdentifier = UniqueIdentifier(),
                      override val participants: List<AbstractParty>) : LinearState {
 }
