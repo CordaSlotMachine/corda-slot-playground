@@ -153,12 +153,12 @@ class GenerateResultForGameFlow(private val gameId: UniqueIdentifier) : FlowLogi
 
         if(successful){
             subFlow(MoveTokenFlow(game.state.data.user.reserveAccount!!.state.data, game.state.data.user.account!!.state.data, game.state.data.stake))
-            subFlow(MoveTokenFlow(casinoAccount.state.data, casinoReserveAccount.state.data, game.state.data.stake*payout))
+            subFlow(MoveTokenFlow(casinoReserveAccount.state.data, game.state.data.user.account!!.state.data, game.state.data.stake*payout))
             val diff = game.state.data.stake*gameConfig.maxMultiplier - game.state.data.stake*payout
             subFlow(MoveTokenFlow(casinoReserveAccount.state.data, casinoAccount.state.data, diff))
         } else {
             subFlow(MoveTokenFlow(game.state.data.user.reserveAccount!!.state.data, casinoAccount.state.data, game.state.data.stake))
-            subFlow(MoveTokenFlow(casinoReserveAccount.state.data, casinoAccount.state.data, game.state.data.stake*gameConfig.maxMultiplier+game.state.data.stake))
+            subFlow(MoveTokenFlow(casinoReserveAccount.state.data, casinoAccount.state.data, game.state.data.stake*gameConfig.maxMultiplier))
         }
 
         txBuilder.verify(serviceHub)

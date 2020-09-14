@@ -1,5 +1,6 @@
 package com.template
 
+import com.r3.corda.lib.accounts.workflows.flows.RequestKeyForAccount
 import com.r3.corda.lib.accounts.workflows.internal.accountService
 import com.r3.corda.lib.accounts.workflows.ourIdentity
 import com.r3.corda.lib.tokens.contracts.states.FungibleToken
@@ -93,8 +94,9 @@ class GameTests {
         val aliceService = aliceNode.services.accountService
         val casinoAccount = aliceService.createAccount("CASINO_ACCOUNT").getOrThrow()
         val casinoReserveAccount = aliceService.createAccount("CASINO_RESERVE_ACCOUNT").getOrThrow()
+        val casinoParty = aliceNode.startFlow(RequestKeyForAccount(casinoAccount.state.data)).getOrThrow()
 
-        val tokens = listOf(999999999999 of EUR issuedBy aliceNode.services.ourIdentity heldBy aliceNode.services.ourIdentity.toParty(aliceNode.services))
+        val tokens = listOf(1000 of EUR issuedBy aliceNode.services.ourIdentity heldBy casinoParty)
         aliceNode.startFlow(IssueTokens(tokens))
 
         val user1 = UserStateInput("user1", "password", null)
@@ -110,11 +112,37 @@ class GameTests {
         aliceNode.startFlow(IssueGameConfigFlow())
         Thread.sleep(2000)
 
+        val aliceAmount: List<StateAndRef<FungibleToken>> = aliceNode.services.vaultService.queryBy(FungibleToken::class.java, VaultQueryCriteria()
+                .withExternalIds(listOf(userState.state.data.account!!.state.data.identifier.id))).states
+        val casinoAmount: List<StateAndRef<FungibleToken>> = aliceNode.services.vaultService.queryBy(FungibleToken::class.java, VaultQueryCriteria()
+                .withExternalIds(listOf(casinoAccount.state.data.identifier.id))).states
+
         val gameState = aliceNode.startFlow(StartGameFlow(userState.state.data,1)).getOrThrow()
         val res = aliceNode.startFlow(ReserveTokensForGameFlow(gameState.linearId)).getOrThrow()
-        val updatedGame = aliceNode.startFlow(GenerateResultForGameFlow(gameState.linearId)).getOrThrow()
-        Thread.sleep(2000)
 
+        Thread.sleep(30000)
+
+        val aliceAmount2: List<StateAndRef<FungibleToken>> = aliceNode.services.vaultService.queryBy(FungibleToken::class.java, VaultQueryCriteria()
+                .withExternalIds(listOf(userState.state.data.account!!.state.data.identifier.id))).states
+        val casinoAmount2: List<StateAndRef<FungibleToken>> = aliceNode.services.vaultService.queryBy(FungibleToken::class.java, VaultQueryCriteria()
+                .withExternalIds(listOf(casinoAccount.state.data.identifier.id))).states
+
+        val aliceAmount22: List<StateAndRef<FungibleToken>> = aliceNode.services.vaultService.queryBy(FungibleToken::class.java, VaultQueryCriteria()
+                .withExternalIds(listOf(userState.state.data.reserveAccount!!.state.data.identifier.id))).states
+        val casinoAmount22: List<StateAndRef<FungibleToken>> = aliceNode.services.vaultService.queryBy(FungibleToken::class.java, VaultQueryCriteria()
+                .withExternalIds(listOf(casinoReserveAccount.state.data.identifier.id))).states
+
+        val updatedGame = aliceNode.startFlow(GenerateResultForGameFlow(gameState.linearId)).getOrThrow()
+        Thread.sleep(30000)
+
+        val aliceAmount3: List<StateAndRef<FungibleToken>> = aliceNode.services.vaultService.queryBy(FungibleToken::class.java, VaultQueryCriteria()
+                .withExternalIds(listOf(userState.state.data.account!!.state.data.identifier.id))).states
+        val casinoAmount3: List<StateAndRef<FungibleToken>> = aliceNode.services.vaultService.queryBy(FungibleToken::class.java, VaultQueryCriteria()
+                .withExternalIds(listOf(casinoAccount.state.data.identifier.id))).states
+        val aliceAmount33: List<StateAndRef<FungibleToken>> = aliceNode.services.vaultService.queryBy(FungibleToken::class.java, VaultQueryCriteria()
+                .withExternalIds(listOf(userState.state.data.reserveAccount!!.state.data.identifier.id))).states
+        val casinoAmount33: List<StateAndRef<FungibleToken>> = aliceNode.services.vaultService.queryBy(FungibleToken::class.java, VaultQueryCriteria()
+                .withExternalIds(listOf(casinoReserveAccount.state.data.identifier.id))).states
 
     }
 
