@@ -36,16 +36,16 @@ fun main(args: Array<String>){
 fun getRandomList(random: Random): List<Int> =
         List(3) { random.nextInt(6)+1 }
 
-fun checkRheel(rheel: String, result: Array<Int>): Boolean {
+fun checkRheel(rheel: String, result: Int): Boolean {
     var found = false
     if(rheel.contains('/')){
         rheel.split('/').forEach { rh ->
-            if(result.contains(Integer.parseInt(rh))){
+            if(result == Integer.parseInt(rh)){
                 found = true
             }
         }
     } else {
-        if(result.contains(Integer.parseInt(rheel))){
+        if(result == Integer.parseInt(rheel)){
             found = true
         }
     }
