@@ -21,6 +21,7 @@ data class UserState(val name: String,
                      val password: String,
                      val owningKey: PublicKey? = null,
                      var account: StateAndRef<AccountInfo>?,
+                     var reserveAccount: StateAndRef<AccountInfo>?,
                      override val linearId: UniqueIdentifier = UniqueIdentifier()) : LinearState {
     override val participants: List<AbstractParty>
         get() = listOfNotNull(owningKey).map { AnonymousParty(it) }

@@ -80,10 +80,11 @@ class TokenTests {
     fun `move tokens`() {
         val aliceService = aliceNode.services.accountService
         val aliceAccount = aliceService.createAccount("TEST_ACCOUNT").getOrThrow()
+        val aliceReserveAccount = aliceService.createAccount("TEST_ACCOUNT_RESERVE").getOrThrow()
         val casinoAccount = aliceService.createAccount("TEST_ACCOUNT2").getOrThrow()
 
         val user1 = UserStateInput("user1", "password", null)
-        val userState = aliceNode.startFlow(IssueUserWrapperFlow(aliceAccount, user1)).getOrThrow()
+        val userState = aliceNode.startFlow(IssueUserWrapperFlow(user1, aliceAccount, aliceReserveAccount)).getOrThrow()
 
         Assert.assertThat(userState.state.data, `is`(notNullValue(UserState::class.java)))
 
