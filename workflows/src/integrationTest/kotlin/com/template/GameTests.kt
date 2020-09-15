@@ -26,6 +26,8 @@ import net.corda.core.node.services.vault.QueryCriteria.VaultQueryCriteria
 import net.corda.core.utilities.getOrThrow
 import net.corda.testing.common.internal.testNetworkParameters
 import net.corda.testing.core.ALICE_NAME
+import net.corda.testing.core.BOB_NAME
+import net.corda.testing.core.CHARLIE_NAME
 import net.corda.testing.core.singleIdentity
 import net.corda.testing.node.MockNetwork
 import net.corda.testing.node.MockNetworkParameters
@@ -73,11 +75,11 @@ class GameTests {
                 )
         )
         aliceNode = mockNet.createPartyNode(ALICE_NAME)
-        //bobNode = mockNet.createPartyNode(BOB_NAME)
-        //charlieNode = mockNet.createPartyNode(CHARLIE_NAME)
+        bobNode = mockNet.createPartyNode(BOB_NAME)
+        charlieNode = mockNet.createPartyNode(CHARLIE_NAME)
         alice = aliceNode.info.singleIdentity()
-        //bob = bobNode.info.singleIdentity()
-        //charlie = charlieNode.info.singleIdentity()
+        bob = bobNode.info.singleIdentity()
+        charlie = charlieNode.info.singleIdentity()
         notary = mockNet.defaultNotaryIdentity
 
         mockNet.startNodes()
