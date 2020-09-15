@@ -150,18 +150,20 @@ class GameTests {
                 .withExternalIds(listOf(userState.state.data.account!!.state.data.identifier.id))).states
         val casinoFinalAmount: List<StateAndRef<FungibleToken>> = aliceNode.services.vaultService.queryBy(FungibleToken::class.java, VaultQueryCriteria()
                 .withExternalIds(listOf(casinoAccount.state.data.identifier.id))).states
-        val aliceFinaLReserveAmount: List<StateAndRef<FungibleToken>> = aliceNode.services.vaultService.queryBy(FungibleToken::class.java, VaultQueryCriteria()
+        val aliceFinalReserveAmount: List<StateAndRef<FungibleToken>> = aliceNode.services.vaultService.queryBy(FungibleToken::class.java, VaultQueryCriteria()
                 .withExternalIds(listOf(userState.state.data.reserveAccount!!.state.data.identifier.id))).states
         val casinoFinalReserveAmount: List<StateAndRef<FungibleToken>> = aliceNode.services.vaultService.queryBy(FungibleToken::class.java, VaultQueryCriteria()
                 .withExternalIds(listOf(casinoReserveAccount.state.data.identifier.id))).states
 
-        if(updatedGame.success == true){
+        if(updatedGame.success == false){
             assertEquals(1,aliceFinalAmount.size)
             assertEquals(3,casinoFinalAmount.size)
         } else {
-            assertEquals(2,aliceFinalAmount.size)
+            assertEquals(3,aliceFinalAmount.size)
             assertEquals(2,casinoFinalAmount.size)
         }
+        assertEquals(0,aliceFinalReserveAmount.size)
+        assertEquals(0,casinoFinalReserveAmount.size)
     }
 
 }
