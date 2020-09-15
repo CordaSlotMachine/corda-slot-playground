@@ -16,17 +16,22 @@ import com.template.utils.checkRheel
 import com.template.utils.generateRandomCombinationFromSeed
 import com.template.utils.getAllParticipants
 import net.corda.core.contracts.UniqueIdentifier
+import net.corda.core.contracts.requireThat
+import net.corda.core.flows.CollectSignaturesFlow
 import net.corda.core.flows.FinalityFlow
 import net.corda.core.flows.FlowLogic
 import net.corda.core.flows.FlowSession
 import net.corda.core.flows.InitiatedBy
 import net.corda.core.flows.InitiatingFlow
 import net.corda.core.flows.ReceiveFinalityFlow
+import net.corda.core.flows.SignTransactionFlow
 import net.corda.core.flows.StartableByRPC
 import net.corda.core.flows.StartableByService
 import net.corda.core.node.services.queryBy
 import net.corda.core.node.services.vault.QueryCriteria
+import net.corda.core.transactions.SignedTransaction
 import net.corda.core.transactions.TransactionBuilder
+import net.corda.core.utilities.unwrap
 
 @StartableByService
 @InitiatingFlow
@@ -163,16 +168,45 @@ class GenerateResultForGameFlow(private val gameId: UniqueIdentifier) : FlowLogi
 
         txBuilder.verify(serviceHub)
         val signedTx = serviceHub.signInitialTransaction(txBuilder)
-        val allOtherParticipants = serviceHub.getAllParticipants().minus(serviceHub.myInfo.legalIdentities.first())
-        subFlow(FinalityFlow(signedTx, allOtherParticipants.map { initiateFlow(it) }))
+        val allOtherParticipants = serviceHub.getAllParticipants().minus(serviceHub.myInfo.legalIdentities.first()).map { initiateFlow(it) }
+        val fullySignedTx = subFlow(CollectSignaturesFlow(signedTx, allOtherParticipants))
+        subFlow(FinalityFlow(fullySignedTx, allOtherParticipants))
         return updatedGame
     }
 }
 
 @InitiatedBy(GenerateResultForGameFlow::class)
-class GenerateResultForGameResponderFlow(private val counterPartySession: FlowSession) : FlowLogic<Unit>() {
+class GenerateResultForGameResponderFlow(private val counterPartySession: FlowSession) : FlowLogic<SignedTransaction>() {
+
     @Suspendable
-    override fun call() {
-        subFlow(ReceiveFinalityFlow(counterPartySession))
+    override fun call(): SignedTransaction {
+        val signTransactionFlow = object : SignTransactionFlow(counterPartySession) {
+            override fun checkTransaction(stx: SignedTransaction) = requireThat {
+                val gameConfig = serviceHub.vaultService.queryBy(GameConfigState::class.java).states.single().state.data
+                val output = stx.tx.outputs.single().data
+                "This must be an GameState transaction." using (output is GameState)
+                val game = output as GameState
+                val result = generateRandomCombinationFromSeed(output.timestamp)
+                "Game result must be identical" using (game.result == result)
+                var successful = false
+                var payout = 0L
+                gameConfig.gameCombinations.forEach {
+                    var rheel1Found = checkRheel(it.rheel1, result[0])
+                    var rheel2Found = checkRheel(it.rheel2, result[1])
+                    var rheel3Found = checkRheel(it.rheel3, result[2])
+
+                    if(rheel1Found && rheel2Found && rheel3Found){
+                        successful = true
+                        payout = it.payout
+                    }
+                }
+                "Game success must be identical" using (game.success == successful)
+                "Game winningAmount must be identical" using (game.winningAmount == game.stake*payout)
+                "Game step must be identical" using (game.step == GameStep.FINISHED)
+            }
+        }
+        val txId = subFlow(signTransactionFlow).id
+
+        return subFlow(ReceiveFinalityFlow(counterPartySession, expectedTxId = txId))
     }
 }

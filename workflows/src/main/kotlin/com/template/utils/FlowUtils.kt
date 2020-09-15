@@ -5,7 +5,7 @@ import net.corda.core.node.ServiceHub
 import java.util.*
 
 val CASINO_ACCOUNT = "CASINO_ACCOUNT"
-val CASINO_RESERVE_ACCOUNT = "CASINO_ACCOUNT"
+val CASINO_RESERVE_ACCOUNT = "CASINO_RESERVE_ACCOUNT"
 
 fun ServiceHub.getAllParticipants(): List<Party> {
     return this.networkMapCache.allNodes.map { it.legalIdentities.first() }.minus(this.networkMapCache.notaryIdentities.first())
