@@ -28,7 +28,7 @@ import java.util.*
 
 @InitiatingFlow
 @StartableByRPC
-class MoveTokenFlow(private val origin: AccountInfo, private val destination: AccountInfo, val amount: Long, val isOrigin: Boolean = true) : FlowLogic<Unit>() {
+class MoveTokenFlow(private val origin: AccountInfo, private val destination: AccountInfo, val amount: Long) : FlowLogic<Unit>() {
     @Suspendable
     override fun call() {
         val originParty = subFlow(RequestKeyForAccount(origin))
