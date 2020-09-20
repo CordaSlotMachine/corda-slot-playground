@@ -105,12 +105,22 @@ class ReserveTokensForGameFlow(private val gameId: UniqueIdentifier) : FlowLogic
         txBuilder.addCommand(GameContract.RESERVE, serviceHub.myInfo.legalIdentities.first().owningKey)
         txBuilder.addInputState(game)
         txBuilder.addOutputState(game.state.data.copy(step = GameStep.RESERVED))
+
+        val maxReward = game.state.data.stake*gameConfig.states.single().state.data.maxMultiplier
+        val casinoNbs = serviceHub.getAllParticipants().size
+        val individualCasinoReserve = (maxReward / casinoNbs).toInt()
+
         subFlow(MoveTokenFlow(game.state.data.user.account!!.state.data, game.state.data.user.reserveAccount!!.state.data, game.state.data.stake))
-        subFlow(MoveTokenFlow(casinoAccount.state.data, casinoReserveAccount.state.data, game.state.data.stake*gameConfig.states.single().state.data.maxMultiplier))
+        subFlow(MoveTokenFlow(casinoAccount.state.data, casinoReserveAccount.state.data, individualCasinoReserve + maxReward % casinoNbs))
+
         txBuilder.verify(serviceHub)
         val signedTx = serviceHub.signInitialTransaction(txBuilder)
         val allOtherParticipants = serviceHub.getAllParticipants().minus(serviceHub.myInfo.legalIdentities.first())
-        subFlow(FinalityFlow(signedTx, allOtherParticipants.map { initiateFlow(it) }))
+        val sessions = allOtherParticipants.map { initiateFlow(it) }
+        sessions.forEach {
+            it.send(individualCasinoReserve)
+        }
+        subFlow(FinalityFlow(signedTx, sessions))
         return true
     }
 }
@@ -119,6 +129,10 @@ class ReserveTokensForGameFlow(private val gameId: UniqueIdentifier) : FlowLogic
 class ReserveTokensForGameResponderFlow(private val counterPartySession: FlowSession) : FlowLogic<Unit>() {
     @Suspendable
     override fun call() {
+        val individualCasinoReserve = counterPartySession.receive<Int>().unwrap { it }
+        val casinoAccount = serviceHub.accountService.accountInfo(CASINO_ACCOUNT).single()
+        val casinoReserveAccount = serviceHub.accountService.accountInfo(CASINO_RESERVE_ACCOUNT).single()
+        subFlow(MoveTokenFlow(casinoAccount.state.data, casinoReserveAccount.state.data, individualCasinoReserve.toLong()))
         subFlow(ReceiveFinalityFlow(counterPartySession))
     }
 }
@@ -155,20 +169,29 @@ class GenerateResultForGameFlow(private val gameId: UniqueIdentifier) : FlowLogi
 
         val casinoAccount = serviceHub.accountService.accountInfo(CASINO_ACCOUNT).single()
         val casinoReserveAccount = serviceHub.accountService.accountInfo(CASINO_RESERVE_ACCOUNT).single()
+        val casinoNbs = serviceHub.getAllParticipants().size
+        val individualPayout = (updatedGame.winningAmount / casinoNbs).toInt()
+
+        val maxReward = game.state.data.stake*gameConfig.maxMultiplier
+        val individualCasinoReserve = (maxReward / casinoNbs).toInt()
 
         if(successful){
+            val ownPayout = individualPayout + (payout % casinoNbs)
             subFlow(MoveTokenFlow(game.state.data.user.reserveAccount!!.state.data, game.state.data.user.account!!.state.data, game.state.data.stake))
-            subFlow(MoveTokenFlow(casinoReserveAccount.state.data, game.state.data.user.account!!.state.data, game.state.data.stake*payout))
-            val diff = game.state.data.stake*gameConfig.maxMultiplier - game.state.data.stake*payout
+            subFlow(MoveTokenFlow(casinoReserveAccount.state.data, game.state.data.user.account!!.state.data, ownPayout))
+            val diff = individualCasinoReserve + (maxReward % casinoNbs) - ownPayout
             subFlow(MoveTokenFlow(casinoReserveAccount.state.data, casinoAccount.state.data, diff))
         } else {
             subFlow(MoveTokenFlow(game.state.data.user.reserveAccount!!.state.data, casinoAccount.state.data, game.state.data.stake))
-            subFlow(MoveTokenFlow(casinoReserveAccount.state.data, casinoAccount.state.data, game.state.data.stake*gameConfig.maxMultiplier))
+            subFlow(MoveTokenFlow(casinoReserveAccount.state.data, casinoAccount.state.data, individualCasinoReserve + (maxReward % casinoNbs)))
         }
 
         txBuilder.verify(serviceHub)
         val signedTx = serviceHub.signInitialTransaction(txBuilder)
         val allOtherParticipants = serviceHub.getAllParticipants().minus(serviceHub.myInfo.legalIdentities.first()).map { initiateFlow(it) }
+        allOtherParticipants.forEach {
+            it.send(updatedGame)
+        }
         val fullySignedTx = subFlow(CollectSignaturesFlow(signedTx, allOtherParticipants))
         subFlow(FinalityFlow(fullySignedTx, allOtherParticipants))
         return updatedGame
@@ -180,33 +203,44 @@ class GenerateResultForGameResponderFlow(private val counterPartySession: FlowSe
 
     @Suspendable
     override fun call(): SignedTransaction {
-        val signTransactionFlow = object : SignTransactionFlow(counterPartySession) {
-            override fun checkTransaction(stx: SignedTransaction) = requireThat {
-                val gameConfig = serviceHub.vaultService.queryBy(GameConfigState::class.java).states.single().state.data
-                val output = stx.tx.outputs.single().data
-                "This must be an GameState transaction." using (output is GameState)
-                val game = output as GameState
-                val result = generateRandomCombinationFromSeed(output.timestamp)
-                "Game result must be identical" using (game.result == result)
-                var successful = false
-                var payout = 0L
-                gameConfig.gameCombinations.forEach {
-                    var rheel1Found = checkRheel(it.rheel1, result[0])
-                    var rheel2Found = checkRheel(it.rheel2, result[1])
-                    var rheel3Found = checkRheel(it.rheel3, result[2])
+        val gameConfig = serviceHub.vaultService.queryBy(GameConfigState::class.java).states.single().state.data
+        val game = counterPartySession.receive<GameState>().unwrap { it }
+        requireThat {
+            val result = generateRandomCombinationFromSeed(game.timestamp)
+            "Game result must be identical" using (game.result!!.contentEquals(result))
+            var successful = false
+            var payout = 0L
+            gameConfig.gameCombinations.forEach {
+                var rheel1Found = checkRheel(it.rheel1, result[0])
+                var rheel2Found = checkRheel(it.rheel2, result[1])
+                var rheel3Found = checkRheel(it.rheel3, result[2])
 
-                    if(rheel1Found && rheel2Found && rheel3Found){
-                        successful = true
-                        payout = it.payout
-                    }
+                if(rheel1Found && rheel2Found && rheel3Found){
+                    successful = true
+                    payout = it.payout
                 }
-                "Game success must be identical" using (game.success == successful)
-                "Game winningAmount must be identical" using (game.winningAmount == game.stake*payout)
-                "Game step must be identical" using (game.step == GameStep.FINISHED)
             }
+            "Game success must be identical" using (game.success == successful)
+            "Game winningAmount must be identical" using (game.winningAmount == game.stake*payout)
+            "Game step must be identical" using (game.step == GameStep.FINISHED)
         }
-        val txId = subFlow(signTransactionFlow).id
 
-        return subFlow(ReceiveFinalityFlow(counterPartySession, expectedTxId = txId))
+        val casinoAccount = serviceHub.accountService.accountInfo(CASINO_ACCOUNT).single()
+        val casinoReserveAccount = serviceHub.accountService.accountInfo(CASINO_RESERVE_ACCOUNT).single()
+        val casinoNbs = serviceHub.getAllParticipants().size
+        val individualPayout = (game.winningAmount / casinoNbs).toInt()
+
+        val maxReward = game.stake*gameConfig.maxMultiplier
+        val individualCasinoReserve = (maxReward / casinoNbs).toInt()
+
+        if(game.success == true){
+            subFlow(MoveTokenFlow(casinoReserveAccount.state.data, game.user.account!!.state.data, individualPayout.toLong()))
+            val diff = individualCasinoReserve - individualPayout
+            subFlow(MoveTokenFlow(casinoReserveAccount.state.data, casinoAccount.state.data, diff.toLong()))
+        } else {
+            subFlow(MoveTokenFlow(casinoReserveAccount.state.data, casinoAccount.state.data, individualCasinoReserve.toLong()))
+        }
+
+        return subFlow(ReceiveFinalityFlow(counterPartySession))
     }
 }
