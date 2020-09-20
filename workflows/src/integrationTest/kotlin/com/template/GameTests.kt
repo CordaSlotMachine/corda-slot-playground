@@ -176,7 +176,7 @@ class GameTests {
             assertEquals(1,aliceFinalAmount.size)
             assertEquals(3,casinoFinalAmount.size)
         } else {
-            assertEquals(3,aliceFinalAmount.size)
+            assertEquals(5,aliceFinalAmount.size)
             assertEquals(2,casinoFinalAmount.size)
         }
         assertEquals(0,aliceFinalReserveAmount.size)
