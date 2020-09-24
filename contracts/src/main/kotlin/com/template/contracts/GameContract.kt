@@ -12,7 +12,8 @@ class GameContract : Contract {
         val RESULT: GameCommands = GameCommands("RESULT")
     }
     override fun verify(tx: LedgerTransaction) {
-        return
+        tx.commandsOfType<GameCommands>()
+                .also { require(it.isNotEmpty()) { "The GameContract should have at least one command" } }
     }
 
 }
