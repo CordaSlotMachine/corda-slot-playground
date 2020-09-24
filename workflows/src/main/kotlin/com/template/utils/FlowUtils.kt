@@ -1,7 +1,12 @@
 package com.template.utils
 
+import com.r3.corda.lib.accounts.contracts.states.AccountInfo
+import com.r3.corda.lib.accounts.workflows.internal.accountService
+import com.template.states.StakeDeposit
+import net.corda.core.flows.FlowException
 import net.corda.core.identity.Party
 import net.corda.core.node.ServiceHub
+import net.corda.core.node.services.queryBy
 import java.util.*
 
 val CASINO_ACCOUNT = "CASINO_ACCOUNT"
@@ -53,3 +58,11 @@ fun checkRheel(rheel: String, result: Int): Boolean {
     return found
 }
 
+fun checkCasinoStakeDeposit(serviceHub: ServiceHub){
+    val casinoAccount = serviceHub.accountService.accountInfo(CASINO_ACCOUNT).single()
+    val stakeDeposits = serviceHub.vaultService.queryBy<StakeDeposit>()
+    val ownDeposit = stakeDeposits.states.filter { it.state.data.account.identifier ==  casinoAccount.state.data.identifier}
+    if(ownDeposit.isEmpty()){
+        throw FlowException("Missing stake deposit for casino ${serviceHub.myInfo.legalIdentities.first()}")
+    }
+}

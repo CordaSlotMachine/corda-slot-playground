@@ -13,12 +13,14 @@ import com.r3.corda.lib.tokens.workflows.flows.rpc.IssueTokens
 import com.template.flows.CreateStakeAccountFlow
 import com.template.flows.IssueUserFlow
 import com.template.flows.MoveTokenFlow
+import com.template.states.StakeDeposit
 import com.template.states.UserState
 import com.template.states.UserStateInput
 import com.template.utils.CASINO_ACCOUNT
 import com.template.utils.CASINO_STAKE_ACCOUNT
 import net.corda.core.contracts.StateAndRef
 import net.corda.core.identity.Party
+import net.corda.core.node.services.queryBy
 import net.corda.core.node.services.vault.QueryCriteria
 import net.corda.core.utilities.getOrThrow
 import net.corda.testing.common.internal.testNetworkParameters
@@ -137,6 +139,9 @@ class POSTests {
         charlieAmount.forEach {
             assertEquals(100000000, it.state.data.amount.quantity)
         }
+
+        val deposits = aliceNode.services.vaultService.queryBy<StakeDeposit>()
+        assertEquals(3, deposits.states.size)
 
     }
 

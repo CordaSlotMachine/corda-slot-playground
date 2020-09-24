@@ -60,7 +60,6 @@ class CreateStakeAccountFlow() : FlowLogic<Unit>() {
         txBuilder.addOutputState(deposit)
         txBuilder.verify(serviceHub)
 
-        val signedTx = serviceHub.signInitialTransaction(txBuilder)
 
         subFlow(MoveTokenFlow(casinoAccount.single().state.data,stakeAccount.state.data, STAKE_AMOUNT))
         subFlow(ShareAccountInfo(stakeAccount,allOtherParticipants))
@@ -76,6 +75,7 @@ class CreateStakeAccountFlow() : FlowLogic<Unit>() {
             }
             txBuilder.addOutputState(partyDeposit)
         }
+        val signedTx = serviceHub.signInitialTransaction(txBuilder)
         val fullySignedTx = subFlow(CollectSignaturesFlow(signedTx, initiatedParticipants))
         subFlow(FinalityFlow(fullySignedTx, initiatedParticipants))
     }
