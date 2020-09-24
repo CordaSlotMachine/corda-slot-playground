@@ -1,9 +1,10 @@
 package com.template.flows
 
 import co.paralleluniverse.fibers.Suspendable
-import com.r3.corda.lib.accounts.workflows.flows.RequestKeyForAccount
 import com.r3.corda.lib.accounts.workflows.internal.accountService
 import com.r3.corda.lib.accounts.workflows.ourIdentity
+import com.r3.corda.lib.tokens.contracts.states.FungibleToken
+import com.r3.corda.lib.tokens.money.EUR
 import com.template.contracts.GameContract
 import com.template.states.GameCombination
 import com.template.states.GameConfigState
@@ -15,6 +16,7 @@ import com.template.utils.CASINO_RESERVE_ACCOUNT
 import com.template.utils.checkRheel
 import com.template.utils.generateRandomCombinationFromSeed
 import com.template.utils.getAllParticipants
+import net.corda.core.contracts.InsufficientBalanceException
 import net.corda.core.contracts.UniqueIdentifier
 import net.corda.core.contracts.requireThat
 import net.corda.core.flows.CollectSignaturesFlow
@@ -24,9 +26,9 @@ import net.corda.core.flows.FlowSession
 import net.corda.core.flows.InitiatedBy
 import net.corda.core.flows.InitiatingFlow
 import net.corda.core.flows.ReceiveFinalityFlow
-import net.corda.core.flows.SignTransactionFlow
 import net.corda.core.flows.StartableByRPC
 import net.corda.core.flows.StartableByService
+import net.corda.core.internal.sumByLong
 import net.corda.core.node.services.queryBy
 import net.corda.core.node.services.vault.QueryCriteria
 import net.corda.core.transactions.SignedTransaction
@@ -72,6 +74,12 @@ class IssueGameConfigResponderFlow(private val counterPartySession: FlowSession)
 class StartGameFlow(private val user: UserState, private val stake: Long) : FlowLogic<GameState>() {
     @Suspendable
     override fun call(): GameState {
+        val userBalance = serviceHub.vaultService.queryBy(FungibleToken::class.java, QueryCriteria.VaultQueryCriteria()
+                .withExternalIds(listOf(user.account!!.state.data.identifier.id))).states
+        val totalBalance = userBalance.sumByLong { t -> t.state.data.amount.quantity }
+        if (totalBalance < stake){
+            throw InsufficientBalanceException(stake.EUR)
+        }
         val txBuilder = TransactionBuilder(notary = serviceHub.networkMapCache.notaryIdentities.first())
         val game = GameState(user = user, stake = stake, participants = serviceHub.getAllParticipants(), result = null, success = null)
         txBuilder.addCommand(GameContract.CREATE, serviceHub.myInfo.legalIdentities.first().owningKey)
@@ -109,9 +117,17 @@ class ReserveTokensForGameFlow(private val gameId: UniqueIdentifier) : FlowLogic
         val maxReward = game.state.data.stake*gameConfig.states.single().state.data.maxMultiplier
         val casinoNbs = serviceHub.getAllParticipants().size
         val individualCasinoReserve = (maxReward / casinoNbs).toInt()
-
+        val ownReserve = individualCasinoReserve + maxReward % casinoNbs
         subFlow(MoveTokenFlow(game.state.data.user.account!!.state.data, game.state.data.user.reserveAccount!!.state.data, game.state.data.stake))
-        subFlow(MoveTokenFlow(casinoAccount.state.data, casinoReserveAccount.state.data, individualCasinoReserve + maxReward % casinoNbs))
+
+        val casinoBalance = serviceHub.vaultService.queryBy(FungibleToken::class.java, QueryCriteria.VaultQueryCriteria()
+                .withExternalIds(listOf(casinoAccount.state.data.identifier.id))).states
+        val totalBalance = casinoBalance.sumByLong { t -> t.state.data.amount.quantity }
+        if (totalBalance < ownReserve){
+            throw InsufficientBalanceException(ownReserve.EUR)
+        }
+
+        subFlow(MoveTokenFlow(casinoAccount.state.data, casinoReserveAccount.state.data, ownReserve))
 
         txBuilder.verify(serviceHub)
         val signedTx = serviceHub.signInitialTransaction(txBuilder)
@@ -132,6 +148,12 @@ class ReserveTokensForGameResponderFlow(private val counterPartySession: FlowSes
         val individualCasinoReserve = counterPartySession.receive<Int>().unwrap { it }
         val casinoAccount = serviceHub.accountService.accountInfo(CASINO_ACCOUNT).single()
         val casinoReserveAccount = serviceHub.accountService.accountInfo(CASINO_RESERVE_ACCOUNT).single()
+        val casinoBalance = serviceHub.vaultService.queryBy(FungibleToken::class.java, QueryCriteria.VaultQueryCriteria()
+                .withExternalIds(listOf(casinoAccount.state.data.identifier.id))).states
+        val totalBalance = casinoBalance.sumByLong { t -> t.state.data.amount.quantity }
+        if (totalBalance < individualCasinoReserve){
+            throw InsufficientBalanceException(individualCasinoReserve.EUR)
+        }
         subFlow(MoveTokenFlow(casinoAccount.state.data, casinoReserveAccount.state.data, individualCasinoReserve.toLong()))
         subFlow(ReceiveFinalityFlow(counterPartySession))
     }
