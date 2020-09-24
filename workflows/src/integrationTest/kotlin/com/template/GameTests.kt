@@ -2,19 +2,16 @@ package com.template
 
 import com.r3.corda.lib.accounts.workflows.flows.RequestKeyForAccount
 import com.r3.corda.lib.accounts.workflows.internal.accountService
-import com.r3.corda.lib.accounts.workflows.ourIdentity
 import com.r3.corda.lib.tokens.contracts.states.FungibleToken
-import com.r3.corda.lib.tokens.contracts.states.NonFungibleToken
 import com.r3.corda.lib.tokens.contracts.utilities.heldBy
 import com.r3.corda.lib.tokens.contracts.utilities.issuedBy
 import com.r3.corda.lib.tokens.contracts.utilities.of
 import com.r3.corda.lib.tokens.money.EUR
 import com.r3.corda.lib.tokens.workflows.flows.rpc.IssueTokens
-import com.r3.corda.lib.tokens.workflows.utilities.toParty
+import com.template.flows.CreateStakeAccountFlow
 import com.template.flows.GenerateResultForGameFlow
 import com.template.flows.IssueGameConfigFlow
 import com.template.flows.IssueUserFlow
-import com.template.flows.MoveTokenFlow
 import com.template.flows.ReserveTokensForGameFlow
 import com.template.flows.StartGameFlow
 import com.template.states.UserState
@@ -23,7 +20,6 @@ import com.template.utils.CASINO_ACCOUNT
 import com.template.utils.CASINO_RESERVE_ACCOUNT
 import net.corda.core.contracts.StateAndRef
 import net.corda.core.identity.Party
-import net.corda.core.messaging.startFlow
 import net.corda.core.node.services.vault.QueryCriteria.VaultQueryCriteria
 import net.corda.core.utilities.getOrThrow
 import net.corda.testing.common.internal.testNetworkParameters
@@ -42,7 +38,6 @@ import org.junit.After
 import org.junit.Assert
 import org.junit.Before
 import org.junit.Test
-import java.util.*
 import kotlin.test.assertEquals
 
 
@@ -118,6 +113,8 @@ class GameTests {
         val charlieTokens = listOf(10000000.00 of EUR issuedBy charlie heldBy partyCharlie)
         charlieNode.startFlow(IssueTokens(charlieTokens)).getOrThrow()
 
+        aliceNode.startFlow(CreateStakeAccountFlow()).getOrThrow()
+
         val user1 = UserStateInput("user1", "password", null)
         val userState = aliceNode.startFlow(IssueUserFlow(user1)).getOrThrow()
 
@@ -132,70 +129,84 @@ class GameTests {
         bobNode.startFlow(IssueGameConfigFlow())
         charlieNode.startFlow(IssueGameConfigFlow())
 
-        val aliceInitAmount: List<StateAndRef<FungibleToken>> = aliceNode.services.vaultService.queryBy(FungibleToken::class.java, VaultQueryCriteria()
+        val userInitAmount: List<StateAndRef<FungibleToken>> = aliceNode.services.vaultService.queryBy(FungibleToken::class.java, VaultQueryCriteria()
                 .withExternalIds(listOf(userState.state.data.account!!.state.data.identifier.id))).states
-        val casinoInitAmount: List<StateAndRef<FungibleToken>> = aliceNode.services.vaultService.queryBy(FungibleToken::class.java, VaultQueryCriteria()
+        val casinoAliceInitAmount: List<StateAndRef<FungibleToken>> = aliceNode.services.vaultService.queryBy(FungibleToken::class.java, VaultQueryCriteria()
                 .withExternalIds(listOf(aliceMainAccount.state.data.identifier.id))).states
+        val casinoBobAmount: List<StateAndRef<FungibleToken>> = bobNode.services.vaultService.queryBy(FungibleToken::class.java, VaultQueryCriteria()
+                .withExternalIds(listOf(bobMainAccount.state.data.identifier.id))).states
+        val casinoCharlieAmount: List<StateAndRef<FungibleToken>> = charlieNode.services.vaultService.queryBy(FungibleToken::class.java, VaultQueryCriteria()
+                .withExternalIds(listOf(charlieMainAccount.state.data.identifier.id))).states
 
-        assertEquals(1000L,aliceInitAmount.first().state.data.amount.quantity)
-        assertEquals(1000000000,casinoInitAmount.first().state.data.amount.quantity)
+        assertEquals(1000L,userInitAmount.first().state.data.amount.quantity)
+        assertEquals(900000000,casinoAliceInitAmount.first().state.data.amount.quantity)
+        assertEquals(900000000,casinoBobAmount.first().state.data.amount.quantity)
+        assertEquals(900000000,casinoCharlieAmount.first().state.data.amount.quantity)
 
         val gameState = aliceNode.startFlow(StartGameFlow(userState.state.data,1)).getOrThrow()
         val res = aliceNode.startFlow(ReserveTokensForGameFlow(gameState.linearId)).getOrThrow()
         assertEquals(true, res)
 
-        val alicePostReserveAmount: List<StateAndRef<FungibleToken>> = aliceNode.services.vaultService.queryBy(FungibleToken::class.java, VaultQueryCriteria()
+        val userPostReserveAmount: List<StateAndRef<FungibleToken>> = aliceNode.services.vaultService.queryBy(FungibleToken::class.java, VaultQueryCriteria()
                 .withExternalIds(listOf(userState.state.data.account!!.state.data.identifier.id))).states
         val casinoAlicePostReserveAmount: List<StateAndRef<FungibleToken>> = aliceNode.services.vaultService.queryBy(FungibleToken::class.java, VaultQueryCriteria()
                 .withExternalIds(listOf(aliceMainAccount.state.data.identifier.id))).states
-        val casinoBobPostReserveAmount: List<StateAndRef<FungibleToken>> = aliceNode.services.vaultService.queryBy(FungibleToken::class.java, VaultQueryCriteria()
+        val casinoBobPostReserveAmount: List<StateAndRef<FungibleToken>> = bobNode.services.vaultService.queryBy(FungibleToken::class.java, VaultQueryCriteria()
                 .withExternalIds(listOf(bobMainAccount.state.data.identifier.id))).states
-        val casinoCharliePostReserveAmount: List<StateAndRef<FungibleToken>> = aliceNode.services.vaultService.queryBy(FungibleToken::class.java, VaultQueryCriteria()
+        val casinoCharliePostReserveAmount: List<StateAndRef<FungibleToken>> = charlieNode.services.vaultService.queryBy(FungibleToken::class.java, VaultQueryCriteria()
                 .withExternalIds(listOf(charlieMainAccount.state.data.identifier.id))).states
 
-        val aliceReserveAmount: List<StateAndRef<FungibleToken>> = aliceNode.services.vaultService.queryBy(FungibleToken::class.java, VaultQueryCriteria()
+        val userReserveAmount: List<StateAndRef<FungibleToken>> = aliceNode.services.vaultService.queryBy(FungibleToken::class.java, VaultQueryCriteria()
                 .withExternalIds(listOf(userState.state.data.reserveAccount!!.state.data.identifier.id))).states
         val casinoAliceReserveAmount: List<StateAndRef<FungibleToken>> = aliceNode.services.vaultService.queryBy(FungibleToken::class.java, VaultQueryCriteria()
                 .withExternalIds(listOf(aliceReserveAccount.state.data.identifier.id))).states
-        val casinoBobReserveAmount: List<StateAndRef<FungibleToken>> = aliceNode.services.vaultService.queryBy(FungibleToken::class.java, VaultQueryCriteria()
+        val casinoBobReserveAmount: List<StateAndRef<FungibleToken>> = bobNode.services.vaultService.queryBy(FungibleToken::class.java, VaultQueryCriteria()
                 .withExternalIds(listOf(bobReserveAccount.state.data.identifier.id))).states
-        val casinoCharlieReserveAmount: List<StateAndRef<FungibleToken>> = aliceNode.services.vaultService.queryBy(FungibleToken::class.java, VaultQueryCriteria()
+        val casinoCharlieReserveAmount: List<StateAndRef<FungibleToken>> = charlieNode.services.vaultService.queryBy(FungibleToken::class.java, VaultQueryCriteria()
                 .withExternalIds(listOf(charlieReserveAccount.state.data.identifier.id))).states
 
-        assertEquals(1,alicePostReserveAmount.size)
+        assertEquals(1,userPostReserveAmount.size)
         assertEquals(1,casinoAlicePostReserveAmount.size)
         assertEquals(1,casinoBobPostReserveAmount.size)
         assertEquals(1,casinoCharliePostReserveAmount.size)
 
-        assertEquals(900L,alicePostReserveAmount.first().state.data.amount.quantity)
-        assertEquals(999993200L,casinoAlicePostReserveAmount.first().state.data.amount.quantity)
-        assertEquals(999993200L,casinoBobPostReserveAmount.first().state.data.amount.quantity)
-        assertEquals(999993200L,casinoCharliePostReserveAmount.first().state.data.amount.quantity)
-        assertEquals(100L,aliceReserveAmount.first().state.data.amount.quantity)
+        assertEquals(900L,userPostReserveAmount.first().state.data.amount.quantity)
+        assertEquals(899993200L,casinoAlicePostReserveAmount.first().state.data.amount.quantity)
+        assertEquals(899993400L,casinoBobPostReserveAmount.first().state.data.amount.quantity)
+        assertEquals(899993400L,casinoCharliePostReserveAmount.first().state.data.amount.quantity)
+        assertEquals(100L,userReserveAmount.first().state.data.amount.quantity)
         assertEquals(6800L,casinoAliceReserveAmount.first().state.data.amount.quantity)
-        assertEquals(6800L,casinoBobReserveAmount.first().state.data.amount.quantity)
-        assertEquals(6800L,casinoCharlieReserveAmount.first().state.data.amount.quantity)
+        assertEquals(6600L,casinoBobReserveAmount.first().state.data.amount.quantity)
+        assertEquals(6600L,casinoCharlieReserveAmount.first().state.data.amount.quantity)
 
         val updatedGame = aliceNode.startFlow(GenerateResultForGameFlow(gameState.linearId)).getOrThrow()
 
-        val aliceFinalAmount: List<StateAndRef<FungibleToken>> = aliceNode.services.vaultService.queryBy(FungibleToken::class.java, VaultQueryCriteria()
+        val userFinalAmount: List<StateAndRef<FungibleToken>> = aliceNode.services.vaultService.queryBy(FungibleToken::class.java, VaultQueryCriteria()
                 .withExternalIds(listOf(userState.state.data.account!!.state.data.identifier.id))).states
-        val casinoFinalAmount: List<StateAndRef<FungibleToken>> = aliceNode.services.vaultService.queryBy(FungibleToken::class.java, VaultQueryCriteria()
+        val casinoAliceFinalAmount: List<StateAndRef<FungibleToken>> = aliceNode.services.vaultService.queryBy(FungibleToken::class.java, VaultQueryCriteria()
                 .withExternalIds(listOf(aliceMainAccount.state.data.identifier.id))).states
-        val aliceFinalReserveAmount: List<StateAndRef<FungibleToken>> = aliceNode.services.vaultService.queryBy(FungibleToken::class.java, VaultQueryCriteria()
+        val casinoBobFinalAmount: List<StateAndRef<FungibleToken>> = bobNode.services.vaultService.queryBy(FungibleToken::class.java, VaultQueryCriteria()
+                .withExternalIds(listOf(aliceMainAccount.state.data.identifier.id))).states
+        val casinoCharlieFinalAmount: List<StateAndRef<FungibleToken>> = charlieNode.services.vaultService.queryBy(FungibleToken::class.java, VaultQueryCriteria()
+                .withExternalIds(listOf(aliceMainAccount.state.data.identifier.id))).states
+        val userFinalReserveAmount: List<StateAndRef<FungibleToken>> = aliceNode.services.vaultService.queryBy(FungibleToken::class.java, VaultQueryCriteria()
                 .withExternalIds(listOf(userState.state.data.reserveAccount!!.state.data.identifier.id))).states
-        val casinoFinalReserveAmount: List<StateAndRef<FungibleToken>> = aliceNode.services.vaultService.queryBy(FungibleToken::class.java, VaultQueryCriteria()
+        val casinoAliceFinalReserveAmount: List<StateAndRef<FungibleToken>> = aliceNode.services.vaultService.queryBy(FungibleToken::class.java, VaultQueryCriteria()
+                .withExternalIds(listOf(aliceReserveAccount.state.data.identifier.id))).states
+        val casinoBobFinalReserveAmount: List<StateAndRef<FungibleToken>> = bobNode.services.vaultService.queryBy(FungibleToken::class.java, VaultQueryCriteria()
+                .withExternalIds(listOf(aliceReserveAccount.state.data.identifier.id))).states
+        val casinoCharlieFinalReserveAmount: List<StateAndRef<FungibleToken>> = charlieNode.services.vaultService.queryBy(FungibleToken::class.java, VaultQueryCriteria()
                 .withExternalIds(listOf(aliceReserveAccount.state.data.identifier.id))).states
 
         if(updatedGame.success == false){
-            assertEquals(1,aliceFinalAmount.size)
-            assertEquals(3,casinoFinalAmount.size)
+            assertEquals(1,userFinalAmount.size)
+            assertEquals(3,casinoAliceFinalAmount.size)
         } else {
-            assertEquals(5,aliceFinalAmount.size)
-            assertEquals(2,casinoFinalAmount.size)
+            assertEquals(5,userFinalAmount.size)
+            assertEquals(2,casinoAliceFinalAmount.size)
         }
-        assertEquals(0,aliceFinalReserveAmount.size)
-        assertEquals(0,casinoFinalReserveAmount.size)
+        assertEquals(0,userFinalReserveAmount.size)
+        assertEquals(0,casinoAliceFinalReserveAmount.size)
     }
 
 }

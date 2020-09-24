@@ -10,9 +10,11 @@ import com.template.states.GameCombination
 import com.template.states.GameConfigState
 import com.template.states.GameState
 import com.template.states.GameStep
+import com.template.states.StakeDeposit
 import com.template.states.UserState
 import com.template.utils.CASINO_ACCOUNT
 import com.template.utils.CASINO_RESERVE_ACCOUNT
+import com.template.utils.checkCasinoStakeDeposit
 import com.template.utils.checkRheel
 import com.template.utils.generateRandomCombinationFromSeed
 import com.template.utils.getAllParticipants
@@ -21,6 +23,7 @@ import net.corda.core.contracts.UniqueIdentifier
 import net.corda.core.contracts.requireThat
 import net.corda.core.flows.CollectSignaturesFlow
 import net.corda.core.flows.FinalityFlow
+import net.corda.core.flows.FlowException
 import net.corda.core.flows.FlowLogic
 import net.corda.core.flows.FlowSession
 import net.corda.core.flows.InitiatedBy
@@ -74,6 +77,8 @@ class IssueGameConfigResponderFlow(private val counterPartySession: FlowSession)
 class StartGameFlow(private val user: UserState, private val stake: Long) : FlowLogic<GameState>() {
     @Suspendable
     override fun call(): GameState {
+        checkCasinoStakeDeposit(serviceHub)
+
         val userBalance = serviceHub.vaultService.queryBy(FungibleToken::class.java, QueryCriteria.VaultQueryCriteria()
                 .withExternalIds(listOf(user.account!!.state.data.identifier.id))).states
         val totalBalance = userBalance.sumByLong { t -> t.state.data.amount.quantity }
@@ -96,6 +101,7 @@ class StartGameFlow(private val user: UserState, private val stake: Long) : Flow
 class StartGameResponderFlow(private val counterPartySession: FlowSession) : FlowLogic<Unit>() {
     @Suspendable
     override fun call() {
+        checkCasinoStakeDeposit(serviceHub)
         subFlow(ReceiveFinalityFlow(counterPartySession))
     }
 }
@@ -105,11 +111,20 @@ class StartGameResponderFlow(private val counterPartySession: FlowSession) : Flo
 class ReserveTokensForGameFlow(private val gameId: UniqueIdentifier) : FlowLogic<Boolean>() {
     @Suspendable
     override fun call(): Boolean {
+        checkCasinoStakeDeposit(serviceHub)
+
         val txBuilder = TransactionBuilder(notary = serviceHub.networkMapCache.notaryIdentities.first())
         val gameConfig = serviceHub.vaultService.queryBy(GameConfigState::class.java)
         val game = serviceHub.vaultService.queryBy<GameState>(QueryCriteria.LinearStateQueryCriteria(linearId = listOf(gameId))).states.single()
         val casinoAccount = serviceHub.accountService.accountInfo(CASINO_ACCOUNT).single()
         val casinoReserveAccount = serviceHub.accountService.accountInfo(CASINO_RESERVE_ACCOUNT).single()
+
+        val stakeDeposits = serviceHub.vaultService.queryBy<StakeDeposit>()
+        val ownDeposit = stakeDeposits.states.filter { it.state.data.account.identifier ==  casinoAccount.state.data.identifier}
+        if(ownDeposit.isEmpty()){
+            throw FlowException("Missing stake deposit for casino $ourIdentity")
+        }
+
         txBuilder.addCommand(GameContract.RESERVE, serviceHub.myInfo.legalIdentities.first().owningKey)
         txBuilder.addInputState(game)
         txBuilder.addOutputState(game.state.data.copy(step = GameStep.RESERVED))
@@ -145,6 +160,8 @@ class ReserveTokensForGameFlow(private val gameId: UniqueIdentifier) : FlowLogic
 class ReserveTokensForGameResponderFlow(private val counterPartySession: FlowSession) : FlowLogic<Unit>() {
     @Suspendable
     override fun call() {
+        checkCasinoStakeDeposit(serviceHub)
+
         val individualCasinoReserve = counterPartySession.receive<Int>().unwrap { it }
         val casinoAccount = serviceHub.accountService.accountInfo(CASINO_ACCOUNT).single()
         val casinoReserveAccount = serviceHub.accountService.accountInfo(CASINO_RESERVE_ACCOUNT).single()
@@ -164,6 +181,8 @@ class ReserveTokensForGameResponderFlow(private val counterPartySession: FlowSes
 class GenerateResultForGameFlow(private val gameId: UniqueIdentifier) : FlowLogic<GameState>() {
     @Suspendable
     override fun call(): GameState {
+        checkCasinoStakeDeposit(serviceHub)
+
         val txBuilder = TransactionBuilder(notary = serviceHub.networkMapCache.notaryIdentities.first())
         val gameConfig = serviceHub.vaultService.queryBy(GameConfigState::class.java).states.single().state.data
         val game = serviceHub.vaultService.queryBy<GameState>(QueryCriteria.LinearStateQueryCriteria(linearId = listOf(gameId))).states.single()
@@ -225,6 +244,8 @@ class GenerateResultForGameResponderFlow(private val counterPartySession: FlowSe
 
     @Suspendable
     override fun call(): SignedTransaction {
+        checkCasinoStakeDeposit(serviceHub)
+
         val gameConfig = serviceHub.vaultService.queryBy(GameConfigState::class.java).states.single().state.data
         val game = counterPartySession.receive<GameState>().unwrap { it }
         requireThat {
