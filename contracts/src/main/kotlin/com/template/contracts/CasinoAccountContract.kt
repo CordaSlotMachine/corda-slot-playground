@@ -8,9 +8,10 @@ import net.corda.core.transactions.LedgerTransaction
 /**
  * This doesn't do anything over and above the [EvolvableTokenContract].
  */
-class StakeContract : Contract {
+class CasinoAccountContract : Contract {
     companion object {
-        val STAKE: StakeCommands = StakeCommands("STAKE")
+        val STAKE: CasinoAccountCommands = CasinoAccountCommands("STAKE")
+        val DEPOSIT: CasinoAccountCommands = CasinoAccountCommands("DEPOSIT")
     }
     override fun verify(tx: LedgerTransaction) {
         return
@@ -18,4 +19,4 @@ class StakeContract : Contract {
 
 }
 
-data class StakeCommands(val id: String) : CommandData
+data class CasinoAccountCommands(val id: String) : CommandData

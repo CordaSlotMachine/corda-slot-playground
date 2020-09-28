@@ -38,7 +38,7 @@ import net.corda.core.transactions.SignedTransaction
 import net.corda.core.transactions.TransactionBuilder
 import net.corda.core.utilities.unwrap
 
-@StartableByService
+@StartableByRPC
 @InitiatingFlow
 class IssueGameConfigFlow() : FlowLogic<Unit>() {
     @Suspendable
