@@ -13,7 +13,16 @@ class TokenContract : Contract {
         val MOVE: TokenCommands = TokenCommands("MOVE")
     }
     override fun verify(tx: LedgerTransaction) {
-        return
+        require(tx.commandsOfType<TokenCommands>().isNotEmpty()){
+            "A TokenContract transaction must contain at least one Token Commands"
+        }
+//        tx.commandsOfType<TokenCommands>()
+//                .forEach() {it->
+//                    if (it.value == TokenContract.MOVE){
+//                        //todo implement
+//                    }
+//
+//                }
     }
 
 }

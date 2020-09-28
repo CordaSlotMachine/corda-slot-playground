@@ -15,6 +15,7 @@ import net.corda.testing.dsl.TestTransactionDSLInterpreter
 fun LedgerDSL<TestTransactionDSLInterpreter, TestLedgerDSLInterpreter>.mockStateAndRefAccountInfo(party:Party) = issueAccountInfo(party).outRefsOfType<AccountInfo>().first();
 
 
+
 private fun LedgerDSL<TestTransactionDSLInterpreter, TestLedgerDSLInterpreter>.issueAccountInfo(accountParty: Party) =
         unverifiedTransaction  {
             val accountInfoId = UniqueIdentifier()

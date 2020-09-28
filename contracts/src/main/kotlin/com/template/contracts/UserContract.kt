@@ -16,7 +16,7 @@ class UserContract : Contract {
         require(tx.commandsOfType<GameCommands>().isNotEmpty() || tx.commandsOfType<UserCommands>().isNotEmpty()){
             "A transaction must contain at least one command"
         }
-        tx.commandsOfType<GameCommands>() //todo this is not always the case
+        tx.commandsOfType<GameCommands>()
                 .forEach() {it->
                     if (it.value == GameContract.RESERVE){
                         verifyReserve(tx)

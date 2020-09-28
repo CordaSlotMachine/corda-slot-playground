@@ -10,7 +10,7 @@ import net.corda.core.serialization.CordaSerializable
 
 @BelongsToContract(StakeContract::class)
 @CordaSerializable
-class StakeDeposit(val account:AccountInfo,
+data class StakeDeposit(val account:AccountInfo,
                    val amount: Long,
                    override val linearId: UniqueIdentifier = UniqueIdentifier(),
                    override val participants: List<AbstractParty>
