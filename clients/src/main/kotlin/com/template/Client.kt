@@ -7,6 +7,7 @@ import com.r3.corda.lib.tokens.contracts.utilities.issuedBy
 import com.r3.corda.lib.tokens.contracts.utilities.of
 import com.r3.corda.lib.tokens.money.EUR
 import com.r3.corda.lib.tokens.workflows.flows.rpc.IssueTokens
+import com.template.flows.CreateCasinoAccountFlow
 import com.template.flows.CreateStakeAccountFlow
 import com.template.flows.IssueGameConfigFlow
 import com.template.utils.CASINO_ACCOUNT
@@ -46,27 +47,19 @@ private class Client {
         val clientConnectionC = clientC.start(casinoC.user, casinoC.password)
         val proxyC = clientConnectionC.proxy
 
-        val casinoAccountA = proxyA.startFlow(::CreateAccount, CASINO_ACCOUNT).returnValue.getOrThrow()
-        val casinoAccountB = proxyB.startFlow(::CreateAccount, CASINO_ACCOUNT).returnValue.getOrThrow()
-        val casinoAccountC = proxyC.startFlow(::CreateAccount, CASINO_ACCOUNT).returnValue.getOrThrow()
-
-        val casinoAccountPartyA = proxyA.startFlow(::RequestKeyForAccount, casinoAccountA.state.data).returnValue.getOrThrow()
-        val casinoAccountPartyB = proxyB.startFlow(::RequestKeyForAccount, casinoAccountB.state.data).returnValue.getOrThrow()
-        val casinoAccountPartyC = proxyC.startFlow(::RequestKeyForAccount, casinoAccountC.state.data).returnValue.getOrThrow()
-
-        val tokensA = listOf(10000000.00 of EUR issuedBy proxyA.nodeInfo().legalIdentities.first() heldBy casinoAccountPartyA)
-        val tokensB = listOf(10000000.00 of EUR issuedBy proxyB.nodeInfo().legalIdentities.first() heldBy casinoAccountPartyB)
-        val tokensC = listOf(10000000.00 of EUR issuedBy proxyC.nodeInfo().legalIdentities.first() heldBy casinoAccountPartyC)
-
-        proxyA.startFlow { IssueTokens(tokensA) }.returnValue.getOrThrow()
-        proxyB.startFlow { IssueTokens(tokensB) }.returnValue.getOrThrow()
-        proxyC.startFlow { IssueTokens(tokensC) }.returnValue.getOrThrow()
-
-        proxyA.startFlow(::CreateStakeAccountFlow).returnValue.getOrThrow()
+        proxyA.startFlow(::CreateCasinoAccountFlow).returnValue.getOrThrow()
+        proxyB.startFlow(::CreateCasinoAccountFlow).returnValue.getOrThrow()
+        proxyC.startFlow(::CreateCasinoAccountFlow).returnValue.getOrThrow()
+        println("Casino Accounts created")
 
         proxyA.startFlow(::IssueGameConfigFlow).returnValue.getOrThrow()
         proxyB.startFlow(::IssueGameConfigFlow).returnValue.getOrThrow()
         proxyC.startFlow(::IssueGameConfigFlow).returnValue.getOrThrow()
+        println("Game config created")
+
+        proxyA.startFlow(::CreateStakeAccountFlow).returnValue.getOrThrow()
+
+        println("Stake Accounts created")
 
         //Close the client connection
         clientConnectionA.close()
