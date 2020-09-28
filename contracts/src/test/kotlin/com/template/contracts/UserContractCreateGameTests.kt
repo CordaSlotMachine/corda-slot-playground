@@ -14,7 +14,7 @@ import net.corda.testing.node.transaction
 import org.junit.Test
 
 
-class GameContractTests {
+class UserContractCreateGameTests {
 
     private val playerId = TestIdentity(CordaX500Name("player", "London", "GB"))
     private val casinoId = TestIdentity(CordaX500Name("casino", "London", "GB"))

@@ -1,0 +1,69 @@
+version: '3.0'
+
+services:
+  notary:
+    image: corda/corda-zulu-java1.8-4.5
+    container_name: notary
+    ports:
+      - "10002:10002"
+      - "10003:10003"
+      - "10043:10043"
+    volumes:
+      - ./Notary/node.conf:/etc/corda/node.conf
+      - ./Notary/certificates:/opt/corda/certificates
+      #- ./Notary/persistence:/opt/corda/persistence
+      - ./Notary/logs:/opt/corda/logs
+      - ./Notary/cordapps:/opt/corda/cordapps
+      - ./Notary/node-infos:/opt/corda/additional-node-infos
+      - ./Notary/network-parameters:/opt/corda/network-parameters
+
+
+  casinoa:
+    image: corda/corda-zulu-java1.8-4.5
+    container_name: casinoa
+    ports:
+      - "10005:10005"
+      - "10006:10006"
+      - "10046:10046"
+    volumes:
+      - ./CasinoA/node.conf:/etc/corda/node.conf
+      - ./CasinoA/certificates:/opt/corda/certificates
+      #- ./CasinoA/persistence:/opt/corda/persistence
+      - ./CasinoA/logs:/opt/corda/logs
+      - ./CasinoA/cordapps:/opt/corda/cordapps
+      - ./CasinoA/node-infos:/opt/corda/additional-node-infos
+      - ./CasinoA/network-parameters:/opt/corda/network-parameters
+
+
+  casinob:
+    image: corda/corda-zulu-java1.8-4.5
+    container_name: casinob
+    ports:
+      - "10008:10008"
+      - "10009:10009"
+      - "10049:10049"
+    volumes:
+      - ./CasinoB/node.conf:/etc/corda/node.conf
+      - ./CasinoB/certificates:/opt/corda/certificates
+      #- ./CasinoB/persistence:/opt/corda/persistence
+      - ./CasinoB/logs:/opt/corda/logs
+      - ./CasinoB/cordapps:/opt/corda/cordapps
+      - ./CasinoB/node-infos:/opt/corda/additional-node-infos
+      - ./CasinoB/network-parameters:/opt/corda/network-parameters
+
+
+  casinoc:
+    image: corda/corda-zulu-java1.8-4.5
+    container_name: casinoc
+    ports:
+      - "10010:10010"
+      - "10011:10011"
+      - "10050:10050"
+    volumes:
+      - ./CasinoC/node.conf:/etc/corda/node.conf
+      - ./CasinoC/certificates:/opt/corda/certificates
+      #- ./CasinoC/persistence:/opt/corda/persistence
+      - ./CasinoC/logs:/opt/corda/logs
+      - ./CasinoC/cordapps:/opt/corda/cordapps
+      - ./CasinoC/node-infos:/opt/corda/additional-node-infos
+      - ./CasinoC/network-parameters:/opt/corda/network-parameters

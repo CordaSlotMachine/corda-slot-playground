@@ -8,7 +8,7 @@ import net.corda.core.transactions.LedgerTransaction
 
 class GameContract : Contract {
     companion object {
-         val CREATE: GameCommands = GameCommands("CREATE") //todo perhaps this should be on the UserContract since we add a GameState as output when it is used
+        val CREATE: GameCommands = GameCommands("CREATE")
         val CONFIG: GameCommands = GameCommands("CONFIG")
         val RESERVE: GameCommands = GameCommands("RESERVE")
         val RESULT: GameCommands = GameCommands("RESULT")
