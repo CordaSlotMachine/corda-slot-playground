@@ -171,7 +171,9 @@ class ReserveTokensForGameResponderFlow(private val counterPartySession: FlowSes
         if (totalBalance < individualCasinoReserve){
             throw InsufficientBalanceException(individualCasinoReserve.EUR)
         }
-        subFlow(MoveTokenFlow(casinoAccount.state.data, casinoReserveAccount.state.data, individualCasinoReserve.toLong()))
+        if(individualCasinoReserve > 0){
+            subFlow(MoveTokenFlow(casinoAccount.state.data, casinoReserveAccount.state.data, individualCasinoReserve.toLong()))
+        }
         subFlow(ReceiveFinalityFlow(counterPartySession))
     }
 }
@@ -277,9 +279,13 @@ class GenerateResultForGameResponderFlow(private val counterPartySession: FlowSe
         val individualCasinoReserve = (maxReward / casinoNbs).toInt()
 
         if(game.success == true){
-            subFlow(MoveTokenFlow(casinoReserveAccount.state.data, game.user.account!!.state.data, individualPayout.toLong()))
+            if (individualPayout > 0){
+                subFlow(MoveTokenFlow(casinoReserveAccount.state.data, game.user.account!!.state.data, individualPayout.toLong()))
+            }
             val diff = individualCasinoReserve - individualPayout
-            subFlow(MoveTokenFlow(casinoReserveAccount.state.data, casinoAccount.state.data, diff.toLong()))
+            if(diff > 0){
+                subFlow(MoveTokenFlow(casinoReserveAccount.state.data, casinoAccount.state.data, diff.toLong()))
+            }
         } else {
             subFlow(MoveTokenFlow(casinoReserveAccount.state.data, casinoAccount.state.data, individualCasinoReserve.toLong()))
         }
