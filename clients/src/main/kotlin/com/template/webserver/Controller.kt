@@ -55,6 +55,6 @@ class Controller(rpc: NodeRPCConnection) {
         userBalances.forEach {
             userBalance += it.state.data.amount.displayTokenSize.multiply(BigDecimal(it.state.data.amount.quantity)).toLong()
         }
-        return GameOutput(updatedGame.result!!.toList(), updatedGame.winningAmount, updatedGame.success!!, userBalance,100,100)
+        return GameOutput(updatedGame.result!!.toList(), updatedGame.winningAmount, updatedGame.success!!, userBalance)
     }
 }
