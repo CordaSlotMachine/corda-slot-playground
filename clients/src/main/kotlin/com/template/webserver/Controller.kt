@@ -8,7 +8,6 @@ import com.template.flows.StartGameFlow
 import com.template.inputs.GameInput
 import com.template.output.GameOutput
 import com.template.states.UserState
-import com.template.states.UserStateInput
 import com.template.states.UserStateOutput
 import net.corda.core.contracts.UniqueIdentifier
 import net.corda.core.messaging.startFlow
@@ -16,7 +15,6 @@ import net.corda.core.messaging.vaultQueryBy
 import net.corda.core.node.services.vault.QueryCriteria
 import net.corda.core.utilities.getOrThrow
 import org.slf4j.LoggerFactory
-import org.springframework.web.bind.annotation.GetMapping
 import org.springframework.web.bind.annotation.PostMapping
 import org.springframework.web.bind.annotation.RequestBody
 import org.springframework.web.bind.annotation.RequestMapping
@@ -38,33 +36,9 @@ class Controller(rpc: NodeRPCConnection) {
 
     //User endpoints
     @PostMapping(value = ["/user/create"], produces = ["application/json"], consumes = ["application/json"])
-    private fun createUser(@RequestBody user: UserStateInput): UserStateOutput {
-        val userState = proxy.startFlow(::IssueUserFlow, user).returnValue.getOrThrow().state.data
-        return UserStateOutput(userState.name, 10, userState.linearId.toString())
-    }
-
-    @PostMapping(value = ["/user/login"], produces = ["application/json"], consumes = ["application/json"])
-    private fun loginUser(@RequestBody user: UserStateInput): Boolean {
-        var success = false
-        if(!user.linearId.isNullOrEmpty()){
-            val userState = proxy.vaultQueryBy<UserState>(
-                    QueryCriteria.LinearStateQueryCriteria(linearId = listOf(UniqueIdentifier.fromString(user.linearId!!))
-                    ))
-            if(user.password == userState.states.single().state.data.password)
-                success = true
-        }
-        return success
-    }
-
-    @GetMapping(value = ["/user/{id}"], produces = ["text/plain"])
-    private fun getUser(): String {
-        return "Define an endpoint here."
-    }
-
-    //Game endpoints
-    @GetMapping(value = ["/game"], produces = ["text/plain"])
-    private fun getRheelsAndPrizes(): String {
-        return "Define an endpoint here."
+    private fun createUser(): UserStateOutput {
+        val userState = proxy.startFlow(::IssueUserFlow).returnValue.getOrThrow().state.data
+        return UserStateOutput(userState.linearId.toString(), 10)
     }
 
     @PostMapping(value = ["/game/spin"], produces = ["application/json"], consumes = ["application/json"])

@@ -12,10 +12,10 @@ import net.corda.core.serialization.CordaSerializable
 
 @BelongsToContract(UserContract::class)
 @CordaSerializable
-data class UserState(val name: String,
-                     val password: String,
+data class UserState(
                      var account: StateAndRef<AccountInfo>?,
                      var reserveAccount: StateAndRef<AccountInfo>?,
                      var userParty: AnonymousParty,
                      override val linearId: UniqueIdentifier = UniqueIdentifier(),
-                     override val participants: List<AbstractParty>) : LinearState {}
+                     override val participants: List<AbstractParty>
+) : LinearState {}
