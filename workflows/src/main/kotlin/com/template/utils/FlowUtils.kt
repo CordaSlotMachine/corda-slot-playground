@@ -13,6 +13,8 @@ val CASINO_ACCOUNT = "CASINO_ACCOUNT"
 val CASINO_RESERVE_ACCOUNT = "CASINO_RESERVE_ACCOUNT"
 val CASINO_STAKE_ACCOUNT = "CASINO_STAKE_ACCOUNT"
 val STAKE_AMOUNT = 1000000L
+val CASINO_DEPOSIT_AMOUNT = 10000000L
+
 fun ServiceHub.getAllParticipants(): List<Party> {
     return this.networkMapCache.allNodes.map { it.legalIdentities.first() }.minus(this.networkMapCache.notaryIdentities.first())
 }

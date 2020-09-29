@@ -41,7 +41,7 @@ class UserContractCreateGameTests {
     fun `Create contract needs a command`() {
         ledgerServices.ledger {
             val accountInfoStateRef: StateAndRef<AccountInfo> = mockStateAndRefAccountInfo(player);
-            val playerState = UserState("player", password = "pwd", account = accountInfoStateRef, reserveAccount = accountInfoStateRef, userParty = player.anonymise(), participants = listOf(player, casino))
+            val playerState = UserState( account = accountInfoStateRef, reserveAccount = accountInfoStateRef, userParty = player.anonymise(), participants = listOf(player, casino))
             ledgerServices.transaction {
 
               output(UserContract::class.java.canonicalName, GameState(playerState, stake = 100, participants = listOf(player,casino), result = null, success = null))
@@ -58,7 +58,7 @@ class UserContractCreateGameTests {
 
         ledgerServices.ledger {
             val accountInfoStateRef:StateAndRef<AccountInfo> = mockStateAndRefAccountInfo(player);
-            val playerState = UserState("player", password = "pwd",account = accountInfoStateRef, reserveAccount=accountInfoStateRef,userParty= player.anonymise(), participants = listOf(player,casino))
+            val playerState = UserState(account = accountInfoStateRef, reserveAccount=accountInfoStateRef,userParty= player.anonymise(), participants = listOf(player,casino))
 
             transaction {
 

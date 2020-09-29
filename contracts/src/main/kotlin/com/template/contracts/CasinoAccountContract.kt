@@ -10,18 +10,18 @@ import net.corda.core.transactions.LedgerTransaction
 /**
  * This doesn't do anything over and above the [EvolvableTokenContract].
  */
-class StakeContract : Contract {
+class CasinoAccountContract : Contract {
     companion object {
-        val STAKE: StakeCommands = StakeCommands("STAKE")
+        val STAKE: CasinoAccountCommands = CasinoAccountCommands("STAKE")
+        val DEPOSIT: CasinoAccountCommands = CasinoAccountCommands("DEPOSIT")
     }
-
     override fun verify(tx: LedgerTransaction) {
         requireThat {
-            "A StakeContract transaction must contain at least one Stake Command" using (tx.commandsOfType<StakeCommands>().isNotEmpty())
+            "A StakeContract transaction must contain at least one Stake Command" using (tx.commandsOfType<CasinoAccountCommands>().isNotEmpty())
         }
-        tx.commandsOfType<StakeCommands>()
+        tx.commandsOfType<CasinoAccountCommands>()
                 .forEach() { it ->
-                    if (it.value == StakeContract.STAKE) {
+                    if (it.value == CasinoAccountContract.STAKE) {
                         verifyStake(tx)
                     }
 
@@ -36,5 +36,4 @@ class StakeContract : Contract {
 
 }
 
-
-data class StakeCommands(val id: String) : CommandData
+data class CasinoAccountCommands(val id: String) : CommandData

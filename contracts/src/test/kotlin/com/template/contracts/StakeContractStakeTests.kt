@@ -31,14 +31,14 @@ class StakeContractStakeTests {
             transaction {
                 val zeroDeposit = StakeDeposit(AccountInfo("casino", casino, UniqueIdentifier()), 0, UniqueIdentifier(), listOf(casino, player))
                 tweak {
-                    output(StakeContract::class.java.canonicalName, zeroDeposit)
+                    output(CasinoAccountContract::class.java.canonicalName, zeroDeposit)
                     failsWith("A transaction must contain at least one command")
-                    command(player.owningKey, StakeContract.STAKE)
+                    command(player.owningKey, CasinoAccountContract.STAKE)
                     failsWith("a StakeDeposit with a positive deposit  required for the output of a StakeContract with STAKE command")
                 }
                 //This time with a valid amount
-                command(player.owningKey, StakeContract.STAKE)
-                output(StakeContract::class.java.canonicalName, zeroDeposit.copy(amount = 1000000L))
+                command(player.owningKey, CasinoAccountContract.STAKE)
+                output(CasinoAccountContract::class.java.canonicalName, zeroDeposit.copy(amount = 1000000L))
                 verifies()
 
             }

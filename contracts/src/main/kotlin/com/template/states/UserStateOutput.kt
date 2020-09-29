@@ -3,4 +3,4 @@ package com.template.states
 import net.corda.core.serialization.CordaSerializable
 
 @CordaSerializable
-data class UserStateInput(val name: String, val password: String, val linearId: String?)
+data class UserStateOutput(val identifier: String, val balance: Long)

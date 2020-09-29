@@ -32,7 +32,7 @@ class UserContractReserveGameTests {
 
         ledgerServices.ledger {
             val accountInfoStateRef:StateAndRef<AccountInfo> = mockStateAndRefAccountInfo(player);
-            val playerState = UserState("player", password = "pwd",account = accountInfoStateRef, reserveAccount=accountInfoStateRef,userParty= player.anonymise(), participants = listOf(player,casino))
+            val playerState = UserState(account = accountInfoStateRef, reserveAccount=accountInfoStateRef,userParty= player.anonymise(), participants = listOf(player,casino))
 
             transaction {
 

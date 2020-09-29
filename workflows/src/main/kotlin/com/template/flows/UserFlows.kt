@@ -15,6 +15,7 @@ import com.template.states.UserState
 import com.template.states.UserStateInput
 import com.template.utils.getAllParticipants
 import net.corda.core.contracts.StateAndRef
+import net.corda.core.contracts.UniqueIdentifier
 import net.corda.core.flows.FinalityFlow
 import net.corda.core.flows.FlowLogic
 import net.corda.core.flows.FlowSession
@@ -27,24 +28,31 @@ import net.corda.core.utilities.getOrThrow
 
 @StartableByRPC
 @InitiatingFlow
-class IssueUserFlow(private val user: UserStateInput) : FlowLogic<StateAndRef<UserState>>() {
+class IssueUserFlow() : FlowLogic<StateAndRef<UserState>>() {
 
     @Suspendable
     override fun call(): StateAndRef<UserState> {
+            val identifier = UniqueIdentifier()
             val accountService = serviceHub.accountService
-            val userAccount = accountService.createAccount(user.name).getOrThrow()
-            val userReserveAccount = accountService.createAccount(user.name+"-RESERVE").getOrThrow()
+            val userAccount = accountService.createAccount(identifier.toString()).getOrThrow()
+            val userReserveAccount = accountService.createAccount("$identifier-RESERVE").getOrThrow()
 
             val party = if (userAccount.state.data.host == ourIdentity) {
                 serviceHub.createKeyForAccount(userAccount.state.data)
             } else {
                 subFlow(RequestKeyForAccount(userAccount.state.data))
             }
-            val tokens = listOf(10 of EUR issuedBy ourIdentity heldBy party)
+            val tokens = listOf(100 of EUR issuedBy ourIdentity heldBy party)
             subFlow(IssueTokens(tokens))
             val txBuilder = TransactionBuilder(notary = serviceHub.networkMapCache.notaryIdentities.first())
             txBuilder.addCommand(UserContract.CREATE, serviceHub.myInfo.legalIdentities.first().owningKey)
-            txBuilder.addOutputState(UserState(user.name, user.password, userAccount, userReserveAccount, party, participants = serviceHub.getAllParticipants()))
+            txBuilder.addOutputState(
+                    UserState(
+                            account = userAccount,
+                            reserveAccount = userReserveAccount,
+                            userParty = party,
+                            linearId = identifier,
+                            participants = serviceHub.getAllParticipants()))
             txBuilder.verify(serviceHub)
             val signedTx = serviceHub.signInitialTransaction(txBuilder)
             val allOtherParticipants = serviceHub.getAllParticipants().minus(serviceHub.myInfo.legalIdentities.first())
