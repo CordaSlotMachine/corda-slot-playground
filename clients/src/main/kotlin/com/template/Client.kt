@@ -1,16 +1,8 @@
 package com.template
 
-import com.r3.corda.lib.accounts.workflows.flows.CreateAccount
-import com.r3.corda.lib.accounts.workflows.flows.RequestKeyForAccount
-import com.r3.corda.lib.tokens.contracts.utilities.heldBy
-import com.r3.corda.lib.tokens.contracts.utilities.issuedBy
-import com.r3.corda.lib.tokens.contracts.utilities.of
-import com.r3.corda.lib.tokens.money.EUR
-import com.r3.corda.lib.tokens.workflows.flows.rpc.IssueTokens
 import com.template.flows.CreateCasinoAccountFlow
 import com.template.flows.CreateStakeAccountFlow
 import com.template.flows.IssueGameConfigFlow
-import com.template.utils.CASINO_ACCOUNT
 import net.corda.client.rpc.CordaRPCClient
 import net.corda.core.messaging.startFlow
 import net.corda.core.utilities.NetworkHostAndPort.Companion.parse
@@ -60,6 +52,12 @@ private class Client {
         proxyA.startFlow(::CreateStakeAccountFlow).returnValue.getOrThrow()
 
         println("Stake Accounts created")
+
+//        val userState = proxyA.startFlow(::IssueUserFlow, UserStateInput("test","test", linearId = null)).returnValue.getOrThrow()
+//
+//        val gameState = proxyA.startFlow(::StartGameFlow, userState.state.data, 10).returnValue.getOrThrow()
+//        val res = proxyA.startFlow(::ReserveTokensForGameFlow, gameState.linearId).returnValue.getOrThrow()
+//        val updatedGame = proxyA.startFlow(::GenerateResultForGameFlow, gameState.linearId).returnValue.getOrThrow()
 
         //Close the client connection
         clientConnectionA.close()
