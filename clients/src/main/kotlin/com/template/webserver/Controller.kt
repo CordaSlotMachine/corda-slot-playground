@@ -7,10 +7,9 @@ import com.template.flows.ReserveTokensForGameFlow
 import com.template.flows.StartGameFlow
 import com.template.inputs.GameInput
 import com.template.output.GameOutput
-import com.template.states.GameState
 import com.template.states.UserState
 import com.template.states.UserStateInput
-import net.corda.core.contracts.StateAndRef
+import com.template.states.UserStateOutput
 import net.corda.core.contracts.UniqueIdentifier
 import net.corda.core.messaging.startFlow
 import net.corda.core.messaging.vaultQueryBy
@@ -39,9 +38,9 @@ class Controller(rpc: NodeRPCConnection) {
 
     //User endpoints
     @PostMapping(value = ["/user/create"], produces = ["application/json"], consumes = ["application/json"])
-    private fun createUser(@RequestBody user: UserStateInput): String {
-        val userState = proxy.startFlow(::IssueUserFlow, user).returnValue.getOrThrow()
-        return userState.state.data.linearId.toString()
+    private fun createUser(@RequestBody user: UserStateInput): UserStateOutput {
+        val userState = proxy.startFlow(::IssueUserFlow, user).returnValue.getOrThrow().state.data
+        return UserStateOutput(userState.name, 10, userState.linearId.toString())
     }
 
     @PostMapping(value = ["/user/login"], produces = ["application/json"], consumes = ["application/json"])

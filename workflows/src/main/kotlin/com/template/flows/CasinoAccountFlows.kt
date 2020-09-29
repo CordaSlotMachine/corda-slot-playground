@@ -101,7 +101,7 @@ class CreateCasinoAccountFlow() : FlowLogic<Unit>() {
         val casinoAccount =  accountService.createAccount(CASINO_ACCOUNT).getOrThrow()
         accountService.createAccount(CASINO_RESERVE_ACCOUNT).getOrThrow()
         val txBuilder = TransactionBuilder(notary = serviceHub.networkMapCache.notaryIdentities.first())
-        txBuilder.addCommand(CasinoAccountContract.STAKE, serviceHub.myInfo.legalIdentities.first().owningKey)
+        txBuilder.addCommand(CasinoAccountContract.DEPOSIT, serviceHub.myInfo.legalIdentities.first().owningKey)
         val allOtherParticipants = serviceHub.getAllParticipants().minus(serviceHub.myInfo.legalIdentities.first())
 
         val party = if (casinoAccount.state.data.host == ourIdentity) {
