@@ -48,11 +48,9 @@ class IssueGameConfigFlow() : FlowLogic<Unit>() {
                 GameCombination( "6", "6", "6", 200),
                 GameCombination("4", "4", "4", 50),
                 GameCombination( "2", "2", "2", 20),
-                GameCombination( "1/3", "5/2", "4/6", 15),
                 GameCombination( "5", "5", "5", 13),
                 GameCombination( "1", "1", "1", 12),
-                GameCombination( "3", "3", "3", 10),
-                GameCombination( "1/3/5", "1/3/5", "1/3/5", 4)
+                GameCombination( "3", "3", "3", 10)
         )
         txBuilder.addCommand(GameContract.CONFIG, serviceHub.myInfo.legalIdentities.first().owningKey)
         txBuilder.addOutputState(GameConfigState(gameCombinations, 200, listOf(serviceHub.ourIdentity)))

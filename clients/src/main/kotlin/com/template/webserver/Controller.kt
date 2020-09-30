@@ -38,7 +38,7 @@ class Controller(rpc: NodeRPCConnection) {
     @PostMapping(value = ["/user/create"], produces = ["application/json"], consumes = ["application/json"])
     private fun createUser(): UserStateOutput {
         val userState = proxy.startFlow(::IssueUserFlow).returnValue.getOrThrow().state.data
-        return UserStateOutput(userState.linearId.toString(), 10)
+        return UserStateOutput(userState.linearId.toString(), 100)
     }
 
     @PostMapping(value = ["/game/spin"], produces = ["application/json"], consumes = ["application/json"])
