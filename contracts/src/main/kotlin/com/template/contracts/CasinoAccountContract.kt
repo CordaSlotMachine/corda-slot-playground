@@ -1,6 +1,7 @@
 package com.template.contracts
 
 import com.r3.corda.lib.tokens.contracts.EvolvableTokenContract
+import com.template.states.CasinoDeposit
 import com.template.states.StakeDeposit
 import net.corda.core.contracts.CommandData
 import net.corda.core.contracts.Contract
@@ -21,8 +22,10 @@ class CasinoAccountContract : Contract {
         }
         tx.commandsOfType<CasinoAccountCommands>()
                 .forEach() { it ->
-                    if (it.value == CasinoAccountContract.STAKE) {
+                    if (it.value == STAKE) {
                         verifyStake(tx)
+                    } else if (it.value == DEPOSIT){
+                        verifyDeposit(tx)
                     }
 
                 }
@@ -31,6 +34,12 @@ class CasinoAccountContract : Contract {
     private fun verifyStake(tx: LedgerTransaction) {
         requireThat {
             "a StakeDeposit with a positive deposit  required for the output of a StakeContract with STAKE command" using (tx.outputStates.all { it is StakeDeposit && it.amount > 0 })
+        }
+    }
+
+    private fun verifyDeposit(tx: LedgerTransaction) {
+        requireThat {
+            "a CasinoDeposit with a positive deposit  required for the output of a StakeContract with DEPOSIT command" using (tx.outputStates.all { it is CasinoDeposit && it.amount > 0 })
         }
     }
 

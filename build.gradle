@@ -162,8 +162,8 @@ task deployNodes(type: net.corda.plugins.Cordform, dependsOn: ['jar']) {
         notary = [validating : false]
         p2pPort 10002
         rpcSettings {
-            address("ec2-15-237-83-246.eu-west-3.compute.amazonaws.com:10003")
-            adminAddress("localhost:10043")
+            address("0.0.0.0:10003")
+            adminAddress("0.0.0.0:10043")
         }
     }
     node {
